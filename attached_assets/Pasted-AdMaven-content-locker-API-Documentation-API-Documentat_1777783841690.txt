@@ -1,0 +1,295 @@
+AdMaven content locker API Documentation
+API Documentation - Create content locker
+
+
+
+
+API Endpoint:
+** ` POST https://publishers.ad-maven.com/api/public/content_locker ` **
+
+
+
+Description:
+This endpoint allows you to create a link shortener.
+
+The endpoint supports both POST and GET requests
+
+
+
+
+
+Request Body:
+
+
+Field Name
+
+Field Description
+
+Field Mandatory
+
+Validation
+
+title
+
+The title of the link.
+
+Mandatory
+
+String value, Max 30 characters.
+
+url
+
+The final destination of the content monetizer, this is the link you're locking.
+
+Mandatory
+
+String Needs to be a valid link. To avoid problems with specials chars such as $,£ , # and etc' It's reccomended to encode the url (examples below)
+
+background
+
+Background is another name for our background, it's the little image/video in the link
+
+Optional
+
+Needs to be a valid link. Could be a link of any image format or a YouTube link.
+
+sub_id
+
+sub_id is a feature allowing you to track separately different traffic sources.
+
+Optional
+
+A new sub_id needs to be first configured through the manual upload in publisher panel. In the form of new link creation on publisher panel you can see a list of your ready to use sub_id's. Could be any string up to 7 chars.
+
+
+
+POST REQUESTS
+
+
+
+
+Authorization:
+When making ** POST ** requests to this API endpoint, you should include your API token in the ** "Authorization" header ** of your HTTP request. Set the header as follows:
+
+
+
+Authorization: Bearer YOUR_API_TOKEN
+
+
+
+Replace ** YOUR_API_TOKEN ** with your actual API token obtained from The AdMaven Panel Under API.
+
+
+
+Response:
+If the request is successful, the API will respond with a success message and the details of the created link shortener.
+
+
+
+Example POST Request:
+
+
+`
+
+
+
+POST https://publishers.ad-maven.com/api/public/content_locker
+
+{
+
+"title": "hello",
+
+"url": "https://yourlinkhere.com",
+
+"background": "https://example.com/background.jpg"
+
+}
+
+`
+
+
+
+
+
+Example Successfull Response:
+
+
+{
+"type": "created",
+"request_time": 556,
+"message": {
+            "title": "test",
+            "url": "https://yourlinkhere.com",
+            "background": "https://example.com/background.jpg",
+            "short": "xxxx",
+            "desturl": "https://onepiecered.co/s?xxxx"
+        }
+}
+
+
+Example Failed Response:
+{
+"type": "error",
+"request_time": 3926,
+"message": "Missing mandatory field: url"
+}
+
+
+GET REQUEST
+
+
+We also support passing parameters in the query parameters GET request using the following syntax:
+
+
+
+Authorization
+Authorization is checked using the ** GET ** request with the query parameter called ** api_token=<YOURTOKEN> ** be sure to change yourtoken to the API token you generate in the panel.
+
+
+
+Example GET Request:
+
+
+`
+
+GET https://publishers.ad-maven.com/api/public/content_locker?api_token=<YOURTOKEN>&title=title&url=url.com&background=imageurl.jpg
+
+`
+
+
+
+Example Successfull Response:
+
+
+{
+  "type": "fetched",
+  "request_time": 1519,
+  "message": [
+    {
+      "title": "title",
+      "url": "url.com",
+      "background": "https://hips.hearstapps.com/hmg-prod/images/beautiful-smooth-haired-red-cat-lies-on-the-sofa-royalty-free-image-1678488026.jpg",
+      "short": "nj2v",
+      "desturl": "https://onepiecered.co/s?nj2v"
+    }
+  ]
+}
+
+
+Example Failed Response:
+
+
+{
+
+"type":"error",
+
+"request_time":572,
+
+"message":"Internal Server Error"
+}
+
+
+
+
+API endpoint exmaples
+
+
+Python GET request
+
+
+
+
+import requests
+from urllib.parse import quote
+
+endpoint_url = "https://publishers.ad-maven.com/api/public/content_locker"
+api_token = "YOUR_API_TOKEN"
+headers = {}  # No Authorization header needed for GET requests parameter api_token
+
+destination_url = "https://url.com"
+encoded_destination_url = quote(destination_url)
+
+params = {
+    "api_token": api_token,
+    "title": "title",
+    "url": encoded_destination_url,
+    "background": "imageurl.jpg"
+}
+
+response = requests.get(endpoint_url, params=params, headers=headers)
+
+print(response.json())
+
+
+Python POST request
+
+
+import requests
+from urllib.parse import quote
+
+endpoint_url = "https://publishers.ad-maven.com/api/public/content_locker"
+api_token = "YOUR_API_TOKEN"
+headers = {
+    "Authorization": f"Bearer {api_token}"
+}
+
+destination_url = "https://url.com"
+encoded_destination_url = quote(destination_url)
+
+params = {
+    "title": "title",
+    "url": encoded_destination_url,
+    "background": "imageurl.jpg"
+}
+
+response = requests.post(endpoint_url, params=params, headers=headers)
+
+print(response.json())
+
+
+Javascript GET request
+
+
+const apiToken = "YOUR_API_TOKEN";
+        const title = "title";
+        let urlValue = "url.com";
+        urlValue = encodeURIComponent(urlValue);
+        const background = "imageurl.jpg";
+
+// Construct the URL with query parameters
+        const url = https://publishers.ad-maven.com/api/public/content_locker?api_token=${apiToken}&title=${title}&url=${urlValue}&background=${background};
+
+// Send GET request
+        fetch(url)
+            .then(response => response.json())
+            .then(data => console.log(data))
+            .catch(error => console.error("Error:", error));
+
+
+Javascript POST request
+
+
+// API Endpoint
+        const url = "https://publishers.ad-maven.com/api/public/content_locker";
+        let urlValue = "https://yourlinkhere.com"
+        urlValue = encodeURIComponent(urlValue);
+        
+// Request body data
+        const requestBody = {
+            title: "hello",
+            url: urlValue,
+            background: "https://example.com/background.jpg"
+        };
+
+// Send POST request
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': Bearer ${apiToken}
+            },
+            body: JSON.stringify(requestBody)
+        })
+            .then(response => response.json())
+            .then(data => console.log(data))
+            .catch(error => console.error("Error:", error));

@@ -71,7 +71,6 @@ export default function TestPage() {
         <p className="text-muted-foreground text-sm font-mono mt-1">BYPASS → ADMAVEN → TELEGRAM</p>
       </div>
 
-      {/* Config status pills */}
       <div className="flex flex-wrap gap-2">
         <span className={`text-xs px-2 py-1 rounded-full border font-mono flex items-center gap-1.5 ${hasExternalApi ? "border-primary/40 bg-primary/10 text-primary" : "border-yellow-500/40 bg-yellow-500/10 text-yellow-400"}`}>
           <ShieldCheck size={11} />
@@ -129,11 +128,7 @@ export default function TestPage() {
       {result && (
         <div className="space-y-3 animate-in fade-in duration-300">
           <h2 className="text-sm font-mono text-muted-foreground">PIPELINE_RESULT</h2>
-
-          {/* Step-by-step breakdown */}
           <div className="space-y-2">
-
-            {/* Original URL */}
             <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-1">
               <p className="text-xs font-mono text-muted-foreground">INPUT</p>
               <p className="font-mono text-sm break-all text-foreground">{result.originalUrl}</p>
@@ -143,7 +138,6 @@ export default function TestPage() {
               <ArrowDown size={16} className="text-muted-foreground" />
             </div>
 
-            {/* Step 1: Bypass */}
             <div className={`rounded-lg border p-4 space-y-1 ${
               result.bypassed
                 ? "border-emerald-500/30 bg-emerald-500/5"
@@ -166,25 +160,20 @@ export default function TestPage() {
                   {result.bypassed ? "BYPASSED" : result.bypassError ? "FAILED" : "SKIPPED"}
                 </Badge>
               </div>
-              {result.bypassed && result.cleanUrl && (
-                <p className="font-mono text-sm break-all text-emerald-400">{result.cleanUrl}</p>
-              )}
+              {result.bypassed && result.cleanUrl && <p className="font-mono text-sm break-all text-emerald-400">{result.cleanUrl}</p>}
               {result.bypassError && (
                 <p className="font-mono text-sm text-destructive flex items-start gap-2">
                   <AlertCircle size={13} className="mt-0.5 shrink-0" />
                   {result.bypassError}
                 </p>
               )}
-              {!result.bypassed && !result.bypassError && (
-                <p className="text-xs text-muted-foreground">Not a Linkvertise link — using URL directly.</p>
-              )}
+              {!result.bypassed && !result.bypassError && <p className="text-xs text-muted-foreground">Not a Linkvertise link — using URL directly.</p>}
             </div>
 
             <div className="flex justify-center">
               <ArrowDown size={16} className="text-muted-foreground" />
             </div>
 
-            {/* Step 2: AdMaven */}
             <div className={`rounded-lg border p-4 space-y-1 ${
               result.admavenWrapped
                 ? "border-emerald-500/30 bg-emerald-500/5"
@@ -207,25 +196,20 @@ export default function TestPage() {
                   {result.admavenWrapped ? "WRAPPED" : result.admavenError ? "FAILED" : "SKIPPED"}
                 </Badge>
               </div>
-              {result.admavenWrapped && result.finalUrl && (
-                <p className="font-mono text-sm break-all text-emerald-400">{result.finalUrl}</p>
-              )}
+              {result.admavenWrapped && result.finalUrl && <p className="font-mono text-sm break-all text-emerald-400">{result.finalUrl}</p>}
               {result.admavenError && (
                 <p className="font-mono text-sm text-yellow-400 flex items-start gap-2">
                   <AlertCircle size={13} className="mt-0.5 shrink-0" />
                   {result.admavenError}
                 </p>
               )}
-              {!result.admavenWrapped && !result.admavenError && (
-                <p className="text-xs text-muted-foreground">No AdMaven API key configured.</p>
-              )}
+              {!result.admavenWrapped && !result.admavenError && <p className="text-xs text-muted-foreground">No AdMaven API key configured.</p>}
             </div>
 
             <div className="flex justify-center">
               <ArrowDown size={16} className="text-muted-foreground" />
             </div>
 
-            {/* Step 3: Telegram */}
             <div className={`rounded-lg border p-4 space-y-1 ${
               result.postedToTelegram
                 ? "border-emerald-500/30 bg-emerald-500/5"
@@ -248,22 +232,17 @@ export default function TestPage() {
                   {result.postedToTelegram ? "POSTED" : result.telegramError ? "FAILED" : "SKIPPED"}
                 </Badge>
               </div>
-              {result.postedToTelegram && (
-                <p className="text-xs text-emerald-400">Message posted to {config?.destTelegramChannel ?? "channel"}.</p>
-              )}
+              {result.postedToTelegram && <p className="text-xs text-emerald-400">Message posted to {config?.destTelegramChannel ?? "channel"}.</p>}
               {result.telegramError && (
                 <p className="font-mono text-sm text-destructive flex items-start gap-2">
                   <AlertCircle size={13} className="mt-0.5 shrink-0" />
                   {result.telegramError}
                 </p>
               )}
-              {!result.postedToTelegram && !result.telegramError && (
-                <p className="text-xs text-muted-foreground">Bot token or destination channel not configured.</p>
-              )}
+              {!result.postedToTelegram && !result.telegramError && <p className="text-xs text-muted-foreground">Bot token or destination channel not configured.</p>}
             </div>
           </div>
 
-          {/* Final URL copy box */}
           {result.finalUrl && (
             <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 p-4">
               <div className="flex items-center justify-between gap-3">

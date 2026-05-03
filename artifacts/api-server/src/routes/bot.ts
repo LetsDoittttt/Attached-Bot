@@ -35,12 +35,6 @@ router.post("/bot/stop", async (req, res): Promise<void> => {
   res.json(StopBotResponse.parse({ running: false, startedAt: null, uptime: null }));
 });
 
-/**
- * Full pipeline test:
- * 1. Bypass (Linkvertise only) → clean URL  |  skip for non-Linkvertise links
- * 2. Wrap in AdMaven → monetised link
- * 3. Post to destination Telegram channel via bot token
- */
 router.post("/bypass/test", async (req, res): Promise<void> => {
   const parsed = TestBypassBody.safeParse(req.body);
   if (!parsed.success) {
@@ -58,10 +52,6 @@ router.post("/bypass/test", async (req, res): Promise<void> => {
     const hasBotToken = Boolean(config?.telegramBotToken);
     const hasDestChannel = Boolean(config?.destTelegramChannel);
 
-    // ── STEP 1: Bypass ────────────────────────────────────────────────────────
-    // • If an external bypass API is configured → always call it
-    // • Else if the URL is a Linkvertise link → use built-in bypass
-    // • Otherwise → skip bypass entirely (Mega, GDrive, etc. are already clean)
     let cleanUrl: string = url;
     let bypassed = false;
     let bypassError: string | null = null;
@@ -134,12 +124,10 @@ router.post("/bypass/test", async (req, res): Promise<void> => {
       cleanUrl = result.url;
       bypassed = true;
     } else {
-      // Non-Linkvertise direct link (Mega, GDrive, etc.) — skip bypass
       req.log.info({ url }, "Non-Linkvertise link — skipping bypass, using URL as-is");
       bypassError = null;
     }
 
-    // ── STEP 2: Wrap in AdMaven ──────────────────────────────────────────────
     let finalUrl = cleanUrl;
     let admavenWrapped = false;
     let admavenError: string | null = null;
@@ -157,7 +145,6 @@ router.post("/bypass/test", async (req, res): Promise<void> => {
       }
     }
 
-    // ── STEP 3: Post to Telegram via bot token ───────────────────────────────
     let postedToTelegram = false;
     let telegramError: string | null = null;
 
@@ -178,7 +165,6 @@ router.post("/bypass/test", async (req, res): Promise<void> => {
       }
     }
 
-    // ── STEP 4: Log and return ───────────────────────────────────────────────
     await db.insert(activityLogTable).values({
       originalUrl: url,
       bypassedUrl: finalUrl,
@@ -200,7 +186,6 @@ router.post("/bypass/test", async (req, res): Promise<void> => {
       postedToTelegram,
       telegramError,
       success: true,
-      // backwards-compatible field used by old UI
       bypassedUrl: finalUrl,
       error: telegramError ?? admavenError ?? null,
     });
