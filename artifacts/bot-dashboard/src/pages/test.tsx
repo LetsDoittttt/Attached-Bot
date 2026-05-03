@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useTestBypass, useGetConfig } from "@workspace/api-client-react";
+import { useGetConfig } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,19 +16,34 @@ export default function TestPage() {
   const { data: config } = useGetConfig();
   const hasExternalApi = Boolean(config?.bypassApiUrl);
 
-  const testBypass = useTestBypass({
-    mutation: {
-      onError: (error: unknown) => {
-        const msg = error instanceof Error ? error.message : "An error occurred while testing the bypass.";
-        toast({ title: "Test Failed", description: msg, variant: "destructive" });
-      }
-    }
-  });
+  const [testResult, setTestResult] = useState<{
+    originalUrl: string;
+    bypassedUrl: string | null;
+    success: boolean;
+    error: string | null;
+  } | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
 
   const handleTest = (e: React.FormEvent) => {
     e.preventDefault();
     if (!url.trim()) return;
-    testBypass.mutate({ data: { url: url.trim() } });
+    setIsTesting(true);
+    setTestResult(null);
+    fetch("/api/bypass/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: url.trim() }),
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || "An error occurred while testing the pipeline.");
+        setTestResult(data);
+      })
+      .catch((error: unknown) => {
+        const msg = error instanceof Error ? error.message : "An error occurred while testing the pipeline.";
+        toast({ title: "Test Failed", description: msg, variant: "destructive" });
+      })
+      .finally(() => setIsTesting(false));
   };
 
   const handleCopy = (text: string) => {
@@ -88,15 +103,15 @@ export default function TestPage() {
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 className="font-mono text-sm bg-muted/50 border-primary/20 focus-visible:ring-primary"
-                disabled={testBypass.isPending}
+                disabled={isTesting}
               />
             </div>
             <Button
               type="submit"
-              disabled={!url.trim() || testBypass.isPending}
+              disabled={!url.trim() || isTesting}
               className="font-mono w-[120px]"
             >
-              {testBypass.isPending ? (
+              {isTesting ? (
                 <span className="flex items-center">
                   <Activity size={14} className="mr-2 animate-spin" />
                   TESTING...
@@ -109,22 +124,22 @@ export default function TestPage() {
         </CardContent>
       </Card>
 
-      {testBypass.data && (
+      {testResult && (
         <div className="space-y-4 animate-in fade-in duration-300">
           <h2 className="text-sm font-mono text-muted-foreground">EXECUTION_RESULT</h2>
 
-          <Card className={`border ${testBypass.data.success ? 'border-emerald-500/30' : 'border-destructive/30'}`}>
+          <Card className={`border ${testResult.success ? 'border-emerald-500/30' : 'border-destructive/30'}`}>
             <CardContent className="p-6 space-y-6">
               <div className="flex items-center justify-between">
                 <Badge
                   variant="outline"
                   className={`font-mono text-xs ${
-                    testBypass.data.success
+                    testResult.success
                       ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
                       : 'bg-destructive/10 text-destructive border-destructive/20'
                   }`}
                 >
-                  {testBypass.data.success ? 'SUCCESS' : 'FAILED'}
+                  {testResult.success ? 'SUCCESS' : 'FAILED'}
                 </Badge>
               </div>
 
@@ -132,7 +147,7 @@ export default function TestPage() {
                 <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground font-mono">ORIGINAL_URL</Label>
                   <div className="p-3 bg-muted rounded-md font-mono text-sm text-foreground break-all">
-                    {testBypass.data.originalUrl}
+                    {testResult.originalUrl}
                   </div>
                 </div>
 
@@ -144,14 +159,14 @@ export default function TestPage() {
 
                 <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground font-mono">BYPASSED_RESULT</Label>
-                  {testBypass.data.success && testBypass.data.bypassedUrl ? (
+                  {testResult.success && testResult.bypassedUrl ? (
                     <div className="p-3 bg-primary/10 border border-primary/20 rounded-md font-mono text-sm text-primary break-all flex justify-between items-start gap-4">
-                      <span>{testBypass.data.bypassedUrl}</span>
+                      <span>{testResult.bypassedUrl}</span>
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 shrink-0 text-primary hover:text-primary hover:bg-primary/20 -mt-1 -mr-1"
-                        onClick={() => handleCopy(testBypass.data.bypassedUrl!)}
+                        onClick={() => handleCopy(testResult.bypassedUrl!)}
                       >
                         {copied ? <Check size={14} /> : <Copy size={14} />}
                       </Button>
@@ -159,7 +174,7 @@ export default function TestPage() {
                   ) : (
                     <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md font-mono text-sm text-destructive flex items-start gap-3">
                       <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                      <span>{testBypass.data.error || "Unknown error occurred"}</span>
+                      <span>{testResult.error || "Unknown error occurred"}</span>
                     </div>
                   )}
                 </div>
