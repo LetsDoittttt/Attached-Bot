@@ -201,7 +201,7 @@ export default function ConfigPage() {
                 <span className="text-xs font-normal text-muted-foreground border border-border rounded px-1.5 py-0.5 ml-1">optional</span>
               </div>
               <CardDescription>
-                Leave blank to use the <span className="text-foreground font-medium">built-in Linkvertise bypass</span> — no API key needed. Fill this in only when you have your own Linkvertise / AdMaven bypass service.
+                Leave blank to use the <span className="text-foreground font-medium">built-in Linkvertise bypass</span> — no API key needed. Only fill this in if you're running your own custom bypass service.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -264,7 +264,7 @@ export default function ConfigPage() {
                 <CardTitle className="text-base">AdMaven API</CardTitle>
               </div>
               <CardDescription>
-                Your AdMaven publisher API key. After bypassing a Linkvertise link, the clean URL gets wrapped in your AdMaven link — that AdMaven link is what gets posted to Telegram.
+                Paste your AdMaven API key here. This is separate from the bypass step — once the Linkvertise link is bypassed to a clean URL, that URL gets wrapped into your AdMaven link, and the AdMaven link is what gets posted to Telegram.
               </CardDescription>
             </CardHeader>
             <CardContent>
