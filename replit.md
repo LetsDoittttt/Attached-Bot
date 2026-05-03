@@ -16,6 +16,23 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 
+## Artifacts
+
+### Bot Dashboard (`artifacts/bot-dashboard`)
+- React + Vite frontend served at `/`
+- Dark terminal-themed UI for managing a Telegram/Discord link bypass bot
+- Pages: Dashboard, Configuration, Activity Logs, Link Tester
+- Real-time stats, activity logs, bot start/stop control
+
+### API Server (`artifacts/api-server`)
+- Express 5 backend served at `/api`
+- Routes: `/config`, `/bot/status`, `/bot/start`, `/bot/stop`, `/logs`, `/stats`, `/bypass/test`
+
+## Database Schema
+
+- `bot_config` — single-row config (Telegram credentials, channels, bypass API settings)
+- `activity_log` — per-link processing history (status: success/failed/skipped)
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages

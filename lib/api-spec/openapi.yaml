@@ -3,13 +3,21 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Bot Dashboard API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: config
+    description: Bot configuration
+  - name: bot
+    description: Bot control
+  - name: logs
+    description: Activity logs
+  - name: stats
+    description: Dashboard statistics
 paths:
   /healthz:
     get:
@@ -24,6 +32,137 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /config:
+    get:
+      operationId: getConfig
+      tags: [config]
+      summary: Get bot configuration
+      responses:
+        "200":
+          description: Bot configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotConfig"
+    put:
+      operationId: updateConfig
+      tags: [config]
+      summary: Update bot configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateConfigInput"
+      responses:
+        "200":
+          description: Updated configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotConfig"
+
+  /bot/status:
+    get:
+      operationId: getBotStatus
+      tags: [bot]
+      summary: Get bot running status
+      responses:
+        "200":
+          description: Bot status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotStatus"
+
+  /bot/start:
+    post:
+      operationId: startBot
+      tags: [bot]
+      summary: Start the bot
+      responses:
+        "200":
+          description: Bot started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotStatus"
+
+  /bot/stop:
+    post:
+      operationId: stopBot
+      tags: [bot]
+      summary: Stop the bot
+      responses:
+        "200":
+          description: Bot stopped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotStatus"
+
+  /logs:
+    get:
+      operationId: getLogs
+      tags: [logs]
+      summary: Get activity logs
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [success, failed, skipped]
+      responses:
+        "200":
+          description: Activity logs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogsResponse"
+
+  /stats:
+    get:
+      operationId: getStats
+      tags: [stats]
+      summary: Get dashboard statistics
+      responses:
+        "200":
+          description: Stats summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /bypass/test:
+    post:
+      operationId: testBypass
+      tags: [bot]
+      summary: Test a bypass link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestBypassInput"
+      responses:
+        "200":
+          description: Bypass result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestBypassResult"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +173,192 @@ components:
       required:
         - status
 
+    BotConfig:
+      type: object
+      properties:
+        id:
+          type: integer
+        telegramApiId:
+          type: string
+        telegramApiHash:
+          type: string
+        sourceChannels:
+          type: array
+          items:
+            type: string
+        destTelegramChannel:
+          type: string
+        discordWebhookUrl:
+          type: string
+        bypassApiUrl:
+          type: string
+        bypassApiKey:
+          type: string
+        postTemplate:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - telegramApiId
+        - telegramApiHash
+        - sourceChannels
+        - destTelegramChannel
+        - discordWebhookUrl
+        - bypassApiUrl
+        - bypassApiKey
+        - postTemplate
+        - updatedAt
+
+    UpdateConfigInput:
+      type: object
+      properties:
+        telegramApiId:
+          type: string
+        telegramApiHash:
+          type: string
+        sourceChannels:
+          type: array
+          items:
+            type: string
+        destTelegramChannel:
+          type: string
+        discordWebhookUrl:
+          type: string
+        bypassApiUrl:
+          type: string
+        bypassApiKey:
+          type: string
+        postTemplate:
+          type: string
+
+    BotStatus:
+      type: object
+      properties:
+        running:
+          type: boolean
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        uptime:
+          type: integer
+          description: Uptime in seconds
+          nullable: true
+      required:
+        - running
+
+    LogEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        originalUrl:
+          type: string
+        bypassedUrl:
+          type: string
+          nullable: true
+        sourceChannel:
+          type: string
+        status:
+          type: string
+          enum: [success, failed, skipped]
+        errorMessage:
+          type: string
+          nullable: true
+        postedToTelegram:
+          type: boolean
+        postedToDiscord:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - originalUrl
+        - sourceChannel
+        - status
+        - postedToTelegram
+        - postedToDiscord
+        - createdAt
+
+    LogsResponse:
+      type: object
+      properties:
+        logs:
+          type: array
+          items:
+            $ref: "#/components/schemas/LogEntry"
+        total:
+          type: integer
+      required:
+        - logs
+        - total
+
+    DashboardStats:
+      type: object
+      properties:
+        totalProcessed:
+          type: integer
+        successCount:
+          type: integer
+        failedCount:
+          type: integer
+        skippedCount:
+          type: integer
+        successRate:
+          type: number
+        last24hCount:
+          type: integer
+        last7dCount:
+          type: integer
+        topSourceChannels:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChannelStat"
+      required:
+        - totalProcessed
+        - successCount
+        - failedCount
+        - skippedCount
+        - successRate
+        - last24hCount
+        - last7dCount
+        - topSourceChannels
+
+    ChannelStat:
+      type: object
+      properties:
+        channel:
+          type: string
+        count:
+          type: integer
+      required:
+        - channel
+        - count
+
+    TestBypassInput:
+      type: object
+      properties:
+        url:
+          type: string
+      required:
+        - url
+
+    TestBypassResult:
+      type: object
+      properties:
+        originalUrl:
+          type: string
+        bypassedUrl:
+          type: string
+          nullable: true
+        success:
+          type: boolean
+        error:
+          type: string
+          nullable: true
+      required:
+        - originalUrl
+        - success
