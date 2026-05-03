@@ -153,6 +153,7 @@ router.post("/bypass/test", async (req, res): Promise<void> => {
       } else {
         admavenError = admavenResult.error ?? "AdMaven failed";
         req.log.warn({ error: admavenError }, "AdMaven failed — using clean URL");
+        finalUrl = cleanUrl;
       }
     }
 
