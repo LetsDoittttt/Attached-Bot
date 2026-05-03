@@ -2,12 +2,6 @@ import { logger } from "./logger";
 
 const TELEGRAM_API = "https://api.telegram.org";
 
-/**
- * Send a message to a Telegram channel using the Bot API.
- * @param botToken  Bot token from @BotFather (e.g. "123456:ABC-...")
- * @param chatId    Channel username (@mychannel) or numeric ID (-100...)
- * @param text      Message text (supports HTML parse mode)
- */
 export async function sendTelegramMessage(
   botToken: string,
   chatId: string,
@@ -34,6 +28,9 @@ export async function sendTelegramMessage(
         ? data["description"]
         : `HTTP ${res.status}`;
       logger.warn({ chatId, description }, "Telegram sendMessage failed");
+      if (description.toLowerCase().includes("chat not found")) {
+        return { ok: false, error: `Chat not found: use the channel @username or numeric chat ID for ${chatId}` };
+      }
       return { ok: false, error: description };
     }
 
@@ -46,9 +43,6 @@ export async function sendTelegramMessage(
   }
 }
 
-/**
- * Verify a bot token is valid by calling getMe.
- */
 export async function verifyBotToken(
   botToken: string
 ): Promise<{ valid: boolean; username: string | null; error: string | null }> {

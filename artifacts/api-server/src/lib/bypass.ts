@@ -103,6 +103,20 @@ export async function createAdmavenLink(cleanUrl: string, apiKey: string): Promi
   const MAX_ATTEMPTS = 3;
   const endpoint = "https://publishers.ad-maven.com/api/public/content_locker";
 
+  const extractLockerUrl = (data: Record<string, unknown>): string | null => {
+    const message = data["message"] as Record<string, unknown> | undefined;
+    const lockerUrl =
+      (message && typeof message["desturl"] === "string" ? message["desturl"] : null) ??
+      (message && typeof message["url"] === "string" ? message["url"] : null) ??
+      (message && typeof message["short"] === "string" ? message["short"] : null) ??
+      (typeof data["desturl"] === "string" ? data["desturl"] : null) ??
+      (typeof data["url"] === "string" ? data["url"] : null) ??
+      (typeof data["shortenedUrl"] === "string" ? data["shortenedUrl"] : null) ??
+      (typeof data["short_url"] === "string" ? data["short_url"] : null);
+
+    return lockerUrl;
+  };
+
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       const res = await fetch(endpoint, {
@@ -131,13 +145,7 @@ export async function createAdmavenLink(cleanUrl: string, apiKey: string): Promi
       }
 
       const data = await res.json() as Record<string, unknown>;
-      const message = data["message"] as Record<string, unknown> | undefined;
-      const lockerUrl =
-        (message && typeof message["desturl"] === "string" ? message["desturl"] : null) ??
-        (message && typeof message["url"] === "string" ? message["url"] : null) ??
-        (typeof data["desturl"] === "string" ? data["desturl"] : null) ??
-        (typeof data["shortenedUrl"] === "string" ? data["shortenedUrl"] : null) ??
-        (typeof data["short_url"] === "string" ? data["short_url"] : null);
+      const lockerUrl = extractLockerUrl(data);
 
       if (!lockerUrl) {
         logger.warn({ data, cleanUrl }, "AdMaven response did not contain a locker URL");

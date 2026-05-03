@@ -107,11 +107,7 @@ export default function TestPage() {
                 disabled={isTesting}
               />
             </div>
-            <Button
-              type="submit"
-              disabled={!url.trim() || isTesting}
-              className="font-mono w-[120px]"
-            >
+            <Button type="submit" disabled={!url.trim() || isTesting} className="font-mono w-[120px]">
               {isTesting ? (
                 <span className="flex items-center gap-2">
                   <Activity size={14} className="animate-spin" />
@@ -134,111 +130,45 @@ export default function TestPage() {
               <p className="font-mono text-sm break-all text-foreground">{result.originalUrl}</p>
             </div>
 
-            <div className="flex justify-center">
-              <ArrowDown size={16} className="text-muted-foreground" />
-            </div>
+            <div className="flex justify-center"><ArrowDown size={16} className="text-muted-foreground" /></div>
 
-            <div className={`rounded-lg border p-4 space-y-1 ${
-              result.bypassed
-                ? "border-emerald-500/30 bg-emerald-500/5"
-                : result.bypassError
-                ? "border-destructive/30 bg-destructive/5"
-                : "border-border bg-muted/20"
-            }`}>
+            <div className={`rounded-lg border p-4 space-y-1 ${result.bypassed ? "border-emerald-500/30 bg-emerald-500/5" : result.bypassError ? "border-destructive/30 bg-destructive/5" : "border-border bg-muted/20"}`}>
               <div className="flex items-center justify-between">
-                <p className="text-xs font-mono text-muted-foreground flex items-center gap-1.5">
-                  <ShieldCheck size={11} />
-                  STEP 1 — BYPASS
-                </p>
-                <Badge variant="outline" className={`text-xs font-mono ${
-                  result.bypassed
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                    : result.bypassError
-                    ? "border-destructive/30 bg-destructive/10 text-destructive"
-                    : "border-border text-muted-foreground"
-                }`}>
+                <p className="text-xs font-mono text-muted-foreground flex items-center gap-1.5"><ShieldCheck size={11} />STEP 1 — BYPASS</p>
+                <Badge variant="outline" className={`text-xs font-mono ${result.bypassed ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : result.bypassError ? "border-destructive/30 bg-destructive/10 text-destructive" : "border-border text-muted-foreground"}`}>
                   {result.bypassed ? "BYPASSED" : result.bypassError ? "FAILED" : "SKIPPED"}
                 </Badge>
               </div>
               {result.bypassed && result.cleanUrl && <p className="font-mono text-sm break-all text-emerald-400">{result.cleanUrl}</p>}
-              {result.bypassError && (
-                <p className="font-mono text-sm text-destructive flex items-start gap-2">
-                  <AlertCircle size={13} className="mt-0.5 shrink-0" />
-                  {result.bypassError}
-                </p>
-              )}
+              {result.bypassError && <p className="font-mono text-sm text-destructive flex items-start gap-2"><AlertCircle size={13} className="mt-0.5 shrink-0" />{result.bypassError}</p>}
               {!result.bypassed && !result.bypassError && <p className="text-xs text-muted-foreground">Not a Linkvertise link — using URL directly.</p>}
             </div>
 
-            <div className="flex justify-center">
-              <ArrowDown size={16} className="text-muted-foreground" />
-            </div>
+            <div className="flex justify-center"><ArrowDown size={16} className="text-muted-foreground" /></div>
 
-            <div className={`rounded-lg border p-4 space-y-1 ${
-              result.admavenWrapped
-                ? "border-emerald-500/30 bg-emerald-500/5"
-                : result.admavenError
-                ? "border-yellow-500/30 bg-yellow-500/5"
-                : "border-border bg-muted/20"
-            }`}>
+            <div className={`rounded-lg border p-4 space-y-1 ${result.admavenWrapped ? "border-emerald-500/30 bg-emerald-500/5" : result.admavenError ? "border-yellow-500/30 bg-yellow-500/5" : "border-border bg-muted/20"}`}>
               <div className="flex items-center justify-between">
-                <p className="text-xs font-mono text-muted-foreground flex items-center gap-1.5">
-                  <Megaphone size={11} />
-                  STEP 2 — ADMAVEN
-                </p>
-                <Badge variant="outline" className={`text-xs font-mono ${
-                  result.admavenWrapped
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                    : result.admavenError
-                    ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-400"
-                    : "border-border text-muted-foreground"
-                }`}>
+                <p className="text-xs font-mono text-muted-foreground flex items-center gap-1.5"><Megaphone size={11} />STEP 2 — ADMAVEN</p>
+                <Badge variant="outline" className={`text-xs font-mono ${result.admavenWrapped ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : result.admavenError ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-400" : "border-border text-muted-foreground"}`}>
                   {result.admavenWrapped ? "WRAPPED" : result.admavenError ? "FAILED" : "SKIPPED"}
                 </Badge>
               </div>
               {result.admavenWrapped && result.finalUrl && <p className="font-mono text-sm break-all text-emerald-400">{result.finalUrl}</p>}
-              {result.admavenError && (
-                <p className="font-mono text-sm text-yellow-400 flex items-start gap-2">
-                  <AlertCircle size={13} className="mt-0.5 shrink-0" />
-                  {result.admavenError}
-                </p>
-              )}
+              {result.admavenError && <p className="font-mono text-sm text-yellow-400 flex items-start gap-2"><AlertCircle size={13} className="mt-0.5 shrink-0" />{result.admavenError}</p>}
               {!result.admavenWrapped && !result.admavenError && <p className="text-xs text-muted-foreground">No AdMaven API key configured.</p>}
             </div>
 
-            <div className="flex justify-center">
-              <ArrowDown size={16} className="text-muted-foreground" />
-            </div>
+            <div className="flex justify-center"><ArrowDown size={16} className="text-muted-foreground" /></div>
 
-            <div className={`rounded-lg border p-4 space-y-1 ${
-              result.postedToTelegram
-                ? "border-emerald-500/30 bg-emerald-500/5"
-                : result.telegramError
-                ? "border-destructive/30 bg-destructive/5"
-                : "border-border bg-muted/20"
-            }`}>
+            <div className={`rounded-lg border p-4 space-y-1 ${result.postedToTelegram ? "border-emerald-500/30 bg-emerald-500/5" : result.telegramError ? "border-destructive/30 bg-destructive/5" : "border-border bg-muted/20"}`}>
               <div className="flex items-center justify-between">
-                <p className="text-xs font-mono text-muted-foreground flex items-center gap-1.5">
-                  <Send size={11} />
-                  STEP 3 — TELEGRAM POST
-                </p>
-                <Badge variant="outline" className={`text-xs font-mono ${
-                  result.postedToTelegram
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                    : result.telegramError
-                    ? "border-destructive/30 bg-destructive/10 text-destructive"
-                    : "border-border text-muted-foreground"
-                }`}>
+                <p className="text-xs font-mono text-muted-foreground flex items-center gap-1.5"><Send size={11} />STEP 3 — TELEGRAM POST</p>
+                <Badge variant="outline" className={`text-xs font-mono ${result.postedToTelegram ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : result.telegramError ? "border-destructive/30 bg-destructive/10 text-destructive" : "border-border text-muted-foreground"}`}>
                   {result.postedToTelegram ? "POSTED" : result.telegramError ? "FAILED" : "SKIPPED"}
                 </Badge>
               </div>
               {result.postedToTelegram && <p className="text-xs text-emerald-400">Message posted to {config?.destTelegramChannel ?? "channel"}.</p>}
-              {result.telegramError && (
-                <p className="font-mono text-sm text-destructive flex items-start gap-2">
-                  <AlertCircle size={13} className="mt-0.5 shrink-0" />
-                  {result.telegramError}
-                </p>
-              )}
+              {result.telegramError && <p className="font-mono text-sm text-destructive flex items-start gap-2"><AlertCircle size={13} className="mt-0.5 shrink-0" />{result.telegramError}</p>}
               {!result.postedToTelegram && !result.telegramError && <p className="text-xs text-muted-foreground">Bot token or destination channel not configured.</p>}
             </div>
           </div>
@@ -247,18 +177,10 @@ export default function TestPage() {
             <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs font-mono text-muted-foreground mb-1 flex items-center gap-1.5">
-                    <Link size={10} />
-                    FINAL URL
-                  </p>
+                  <p className="text-xs font-mono text-muted-foreground mb-1 flex items-center gap-1.5"><Link size={10} />FINAL URL</p>
                   <p className="font-mono text-sm text-primary break-all">{result.finalUrl}</p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0 text-primary hover:bg-primary/20"
-                  onClick={() => handleCopy(result.finalUrl!)}
-                >
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-primary hover:bg-primary/20" onClick={() => handleCopy(result.finalUrl!)}>
                   {copied ? <Check size={14} /> : <Copy size={14} />}
                 </Button>
               </div>
