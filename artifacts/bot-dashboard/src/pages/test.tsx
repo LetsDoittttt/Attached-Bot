@@ -55,11 +55,11 @@ export default function TestPage() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-3xl mx-auto">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Link Tester</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Pipeline Tester</h1>
         <p className="text-muted-foreground text-sm font-mono mt-1">DIAGNOSTIC_UTILITY</p>
       </div>
 
-      {/* Bypass mode banner */}
+      {/* Pipeline mode banner */}
       <div className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-sm ${
         hasExternalApi
           ? "border-primary/30 bg-primary/5 text-primary"
@@ -76,7 +76,7 @@ export default function TestPage() {
             <>
               <span className="font-semibold">Built-in Linkvertise bypass active</span>
               <span className="text-muted-foreground block mt-0.5">
-                No external API configured. Paste a Linkvertise link below to test. Configure your own API in Setup when you have one.
+                No external API configured. Paste a link below to test the full pipeline. Configure your own API in Setup when you have one.
               </span>
             </>
           )}
@@ -87,12 +87,12 @@ export default function TestPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Terminal size={18} className="text-primary" />
-            Live Bypass Test
+            Live Pipeline Test
           </CardTitle>
           <CardDescription>
             {hasExternalApi
-              ? "Test your configured bypass API without sending through Telegram."
-              : "Paste a Linkvertise link to test the built-in bypass."}
+              ? "Test your configured bypass API, AdMaven upload, and Telegram post."
+              : "Paste a link to test the built-in bypass, AdMaven upload, and Telegram post."}
           </CardDescription>
         </CardHeader>
         <CardContent>
