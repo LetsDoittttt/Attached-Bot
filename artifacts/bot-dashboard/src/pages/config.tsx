@@ -15,11 +15,12 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { Eye, EyeOff, Save, CheckCircle2, Link2, Radio, Send } from "lucide-react";
+import { Eye, EyeOff, Save, CheckCircle2, Link2, Radio, Send, Megaphone } from "lucide-react";
 
 const formSchema = z.object({
   bypassApiUrl: z.string().url("Must be a valid URL").or(z.literal("")),
   bypassApiKey: z.string(),
+  admavenApiKey: z.string(),
   sourceChannelsRaw: z.string().min(1, "Add at least one source channel"),
   destTelegramChannel: z.string().min(1, "Destination channel is required"),
   discordWebhookUrl: z.string().url("Must be a valid URL").or(z.literal("")),
@@ -34,6 +35,7 @@ export default function ConfigPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showApiKey, setShowApiKey] = useState(false);
+  const [showAdmavenKey, setShowAdmavenKey] = useState(false);
   const [showHash, setShowHash] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -60,6 +62,7 @@ export default function ConfigPage() {
     defaultValues: {
       bypassApiUrl: "",
       bypassApiKey: "",
+      admavenApiKey: "",
       sourceChannelsRaw: "",
       destTelegramChannel: "",
       discordWebhookUrl: "",
@@ -74,6 +77,7 @@ export default function ConfigPage() {
       form.reset({
         bypassApiUrl: config.bypassApiUrl ?? "",
         bypassApiKey: config.bypassApiKey ?? "",
+        admavenApiKey: config.admavenApiKey ?? "",
         sourceChannelsRaw: config.sourceChannels?.join("\n") ?? "",
         destTelegramChannel: config.destTelegramChannel ?? "",
         discordWebhookUrl: config.discordWebhookUrl ?? "",
@@ -94,6 +98,7 @@ export default function ConfigPage() {
       data: {
         bypassApiUrl: data.bypassApiUrl,
         bypassApiKey: data.bypassApiKey,
+        admavenApiKey: data.admavenApiKey,
         sourceChannels,
         destTelegramChannel: data.destTelegramChannel,
         discordWebhookUrl: data.discordWebhookUrl,
@@ -181,6 +186,51 @@ export default function ConfigPage() {
                         </button>
                       </div>
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          {/* ADMAVEN API */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Megaphone size={16} className="text-primary" />
+                <CardTitle className="text-base">AdMaven API</CardTitle>
+              </div>
+              <CardDescription>
+                Your AdMaven publisher API key. After bypassing a Linkvertise link, the clean URL gets wrapped in your AdMaven link — that AdMaven link is what gets posted to Telegram.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FormField
+                control={form.control}
+                name="admavenApiKey"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>AdMaven API Key</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          className="font-mono text-sm pr-10"
+                          type={showAdmavenKey ? "text" : "password"}
+                          placeholder="Your AdMaven publisher API key"
+                          {...field}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowAdmavenKey(!showAdmavenKey)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {showAdmavenKey ? <EyeOff size={15} /> : <Eye size={15} />}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormDescription className="text-xs">
+                      Find your API key in the AdMaven publisher dashboard under API settings. Leave blank to post the clean bypassed URL directly instead.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

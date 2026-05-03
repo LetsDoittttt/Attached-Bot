@@ -27,6 +27,7 @@ export const GetConfigResponse = zod.object({
   discordWebhookUrl: zod.string(),
   bypassApiUrl: zod.string(),
   bypassApiKey: zod.string(),
+  admavenApiKey: zod.string(),
   postTemplate: zod.string(),
   updatedAt: zod.coerce.date(),
 });
@@ -42,6 +43,7 @@ export const UpdateConfigBody = zod.object({
   discordWebhookUrl: zod.string().optional(),
   bypassApiUrl: zod.string().optional(),
   bypassApiKey: zod.string().optional(),
+  admavenApiKey: zod.string().optional(),
   postTemplate: zod.string().optional(),
 });
 
@@ -54,6 +56,7 @@ export const UpdateConfigResponse = zod.object({
   discordWebhookUrl: zod.string(),
   bypassApiUrl: zod.string(),
   bypassApiKey: zod.string(),
+  admavenApiKey: zod.string(),
   postTemplate: zod.string(),
   updatedAt: zod.coerce.date(),
 });

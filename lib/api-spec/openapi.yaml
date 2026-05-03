@@ -194,6 +194,8 @@ components:
           type: string
         bypassApiKey:
           type: string
+        admavenApiKey:
+          type: string
         postTemplate:
           type: string
         updatedAt:
@@ -208,6 +210,7 @@ components:
         - discordWebhookUrl
         - bypassApiUrl
         - bypassApiKey
+        - admavenApiKey
         - postTemplate
         - updatedAt
 
@@ -229,6 +232,8 @@ components:
         bypassApiUrl:
           type: string
         bypassApiKey:
+          type: string
+        admavenApiKey:
           type: string
         postTemplate:
           type: string

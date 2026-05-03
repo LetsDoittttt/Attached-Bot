@@ -18,6 +18,7 @@ export interface BotConfig {
   discordWebhookUrl: string;
   bypassApiUrl: string;
   bypassApiKey: string;
+  admavenApiKey: string;
   postTemplate: string;
   updatedAt: string;
 }
@@ -30,6 +31,7 @@ export interface UpdateConfigInput {
   discordWebhookUrl?: string;
   bypassApiUrl?: string;
   bypassApiKey?: string;
+  admavenApiKey?: string;
   postTemplate?: string;
 }
 

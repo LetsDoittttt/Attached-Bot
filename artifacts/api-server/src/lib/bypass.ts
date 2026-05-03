@@ -112,6 +112,45 @@ async function bypassLinkvertieDirect(url: string): Promise<string | null> {
 }
 
 /**
+ * Upload a clean URL to AdMaven and return the AdMaven short link.
+ * AdMaven API: https://api.ad-maven.com/v1/links/create?key={key}&url={url}
+ */
+export async function createAdmavenLink(cleanUrl: string, apiKey: string): Promise<{ admavenUrl: string | null; error: string | null }> {
+  try {
+    const endpoint = `https://api.ad-maven.com/v1/links/create?key=${encodeURIComponent(apiKey)}&url=${encodeURIComponent(cleanUrl)}`;
+    const res = await fetch(endpoint, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!res.ok) {
+      return { admavenUrl: null, error: `AdMaven API returned ${res.status}` };
+    }
+
+    const data = await res.json() as Record<string, unknown>;
+
+    // AdMaven response: { status: 1, shortenedUrl: "https://..." } or { data: { url: "..." } }
+    const link =
+      (typeof data["shortenedUrl"] === "string" ? data["shortenedUrl"] : null) ??
+      (typeof data["short_url"] === "string" ? data["short_url"] : null) ??
+      (typeof (data["data"] as Record<string, unknown> | undefined)?.["url"] === "string"
+        ? (data["data"] as Record<string, string>)["url"]
+        : null);
+
+    if (!link) {
+      logger.warn({ data, cleanUrl }, "AdMaven response did not contain a link");
+      return { admavenUrl: null, error: "AdMaven returned an unexpected response format" };
+    }
+
+    return { admavenUrl: link, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    logger.error({ err, cleanUrl }, "AdMaven API call failed");
+    return { admavenUrl: null, error: message };
+  }
+}
+
+/**
  * Main built-in bypass function. Tries bypass.vip first, then direct scrape.
  */
 export async function builtInBypass(url: string): Promise<{ url: string | null; method: string }> {

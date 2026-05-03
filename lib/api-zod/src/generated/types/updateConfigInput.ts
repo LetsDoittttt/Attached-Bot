@@ -14,5 +14,6 @@ export interface UpdateConfigInput {
   discordWebhookUrl?: string;
   bypassApiUrl?: string;
   bypassApiKey?: string;
+  admavenApiKey?: string;
   postTemplate?: string;
 }
