@@ -130,9 +130,10 @@ export default function ConfigPage() {
               <div className="flex items-center gap-2">
                 <Link2 size={16} className="text-primary" />
                 <CardTitle className="text-base">Bypass API</CardTitle>
+                <span className="text-xs font-normal text-muted-foreground border border-border rounded px-1.5 py-0.5 ml-1">optional</span>
               </div>
               <CardDescription>
-                Your Linkvertise / AdMaven bypass service endpoint. The bot will call this to get the clean link.
+                Leave blank to use the <span className="text-foreground font-medium">built-in Linkvertise bypass</span> — no API key needed. Fill this in only when you have your own Linkvertise / AdMaven bypass service.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

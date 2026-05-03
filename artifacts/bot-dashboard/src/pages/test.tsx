@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import { useTestBypass } from "@workspace/api-client-react";
+import { useTestBypass, useGetConfig } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Terminal, ArrowRight, Activity, AlertCircle, Copy, Check } from "lucide-react";
+import { Terminal, ArrowRight, Activity, AlertCircle, Copy, Check, Zap, Link } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function TestPage() {
@@ -13,14 +13,14 @@ export default function TestPage() {
   const [url, setUrl] = useState("");
   const [copied, setCopied] = useState(false);
 
+  const { data: config } = useGetConfig();
+  const hasExternalApi = Boolean(config?.bypassApiUrl);
+
   const testBypass = useTestBypass({
     mutation: {
-      onError: (error: any) => {
-        toast({
-          title: "Test Failed",
-          description: error?.message || "An error occurred while testing the bypass API.",
-          variant: "destructive"
-        });
+      onError: (error: unknown) => {
+        const msg = error instanceof Error ? error.message : "An error occurred while testing the bypass.";
+        toast({ title: "Test Failed", description: msg, variant: "destructive" });
       }
     }
   });
@@ -44,6 +44,30 @@ export default function TestPage() {
         <p className="text-muted-foreground text-sm font-mono mt-1">DIAGNOSTIC_UTILITY</p>
       </div>
 
+      {/* Bypass mode banner */}
+      <div className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-sm ${
+        hasExternalApi
+          ? "border-primary/30 bg-primary/5 text-primary"
+          : "border-yellow-500/30 bg-yellow-500/5 text-yellow-400"
+      }`}>
+        {hasExternalApi ? <Link size={16} className="mt-0.5 shrink-0" /> : <Zap size={16} className="mt-0.5 shrink-0" />}
+        <div>
+          {hasExternalApi ? (
+            <>
+              <span className="font-semibold">External API active</span>
+              <span className="text-muted-foreground ml-2 font-mono text-xs">{config?.bypassApiUrl}</span>
+            </>
+          ) : (
+            <>
+              <span className="font-semibold">Built-in Linkvertise bypass active</span>
+              <span className="text-muted-foreground block mt-0.5">
+                No external API configured. Paste a Linkvertise link below to test. Configure your own API in Setup when you have one.
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+
       <Card className="border-primary/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -51,22 +75,24 @@ export default function TestPage() {
             Live Bypass Test
           </CardTitle>
           <CardDescription>
-            Test the configured bypass API directly without sending through Telegram.
+            {hasExternalApi
+              ? "Test your configured bypass API without sending through Telegram."
+              : "Paste a Linkvertise link to test the built-in bypass."}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleTest} className="flex gap-3">
             <div className="flex-1">
               <Input
-                placeholder="https://short-link.example/..."
+                placeholder={hasExternalApi ? "https://short-link.example/..." : "https://linkvertise.com/..."}
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 className="font-mono text-sm bg-muted/50 border-primary/20 focus-visible:ring-primary"
                 disabled={testBypass.isPending}
               />
             </div>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={!url.trim() || testBypass.isPending}
               className="font-mono w-[120px]"
             >
@@ -86,15 +112,15 @@ export default function TestPage() {
       {testBypass.data && (
         <div className="space-y-4 animate-in fade-in duration-300">
           <h2 className="text-sm font-mono text-muted-foreground">EXECUTION_RESULT</h2>
-          
+
           <Card className={`border ${testBypass.data.success ? 'border-emerald-500/30' : 'border-destructive/30'}`}>
             <CardContent className="p-6 space-y-6">
               <div className="flex items-center justify-between">
-                <Badge 
-                  variant="outline" 
+                <Badge
+                  variant="outline"
                   className={`font-mono text-xs ${
-                    testBypass.data.success 
-                      ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' 
+                    testBypass.data.success
+                      ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
                       : 'bg-destructive/10 text-destructive border-destructive/20'
                   }`}
                 >
