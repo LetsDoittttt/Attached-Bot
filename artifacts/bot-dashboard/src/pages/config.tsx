@@ -4,7 +4,7 @@ import {
   getGetConfigQueryKey,
   useUpdateConfig
 } from "@workspace/api-client-react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { Eye, EyeOff, Save, CheckCircle2, Link2, Radio, Send, Megaphone } from "lucide-react";
+import { Eye, EyeOff, Save, CheckCircle2, Link2, Radio, Send, Megaphone, ArrowRight, Rss, ShieldCheck, Zap } from "lucide-react";
 
 const formSchema = z.object({
   bypassApiUrl: z.string().url("Must be a valid URL").or(z.literal("")),
@@ -109,6 +109,12 @@ export default function ConfigPage() {
     });
   };
 
+  const watched = useWatch({ control: form.control });
+  const hasSource = Boolean(watched.sourceChannelsRaw?.trim());
+  const hasBypass = Boolean(watched.bypassApiUrl?.trim());
+  const hasAdmaven = Boolean(watched.admavenApiKey?.trim());
+  const hasDest = Boolean(watched.destTelegramChannel?.trim());
+
   if (isLoading) {
     return (
       <div className="space-y-6 max-w-2xl">
@@ -119,11 +125,68 @@ export default function ConfigPage() {
     );
   }
 
+  type StepStatus = "active" | "built-in" | "idle";
+  const steps: { icon: React.ReactNode; label: string; sub: string; status: StepStatus }[] = [
+    {
+      icon: <Rss size={15} />,
+      label: "Source",
+      sub: hasSource ? "Channels set" : "No channels",
+      status: hasSource ? "active" : "idle",
+    },
+    {
+      icon: <ShieldCheck size={15} />,
+      label: "Bypass",
+      sub: hasBypass ? "Custom API" : "Built-in",
+      status: hasBypass ? "active" : "built-in",
+    },
+    {
+      icon: <Megaphone size={15} />,
+      label: "AdMaven",
+      sub: hasAdmaven ? "API key set" : "Not set",
+      status: hasAdmaven ? "active" : "idle",
+    },
+    {
+      icon: <Send size={15} />,
+      label: "Post",
+      sub: hasDest ? "Channel set" : "No channel",
+      status: hasDest ? "active" : "idle",
+    },
+  ];
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-16 max-w-2xl">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Setup</h1>
         <p className="text-muted-foreground text-sm mt-1">Configure where to get links and where to post them</p>
+      </div>
+
+      {/* PIPELINE DIAGRAM */}
+      <div className="rounded-lg border border-border bg-muted/20 px-4 py-4">
+        <p className="text-xs font-mono text-muted-foreground mb-3 uppercase tracking-widest">Pipeline</p>
+        <div className="flex items-center gap-1 flex-wrap">
+          {steps.map((step, i) => (
+            <React.Fragment key={step.label}>
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-md border text-sm transition-colors ${
+                step.status === "active"
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : step.status === "built-in"
+                  ? "border-yellow-500/30 bg-yellow-500/5 text-yellow-400"
+                  : "border-border bg-background text-muted-foreground"
+              }`}>
+                <span className={step.status === "active" ? "text-primary" : step.status === "built-in" ? "text-yellow-400" : "text-muted-foreground"}>
+                  {step.status === "built-in" ? <Zap size={15} /> : step.icon}
+                </span>
+                <div className="leading-tight">
+                  <div className="font-medium text-xs">{step.label}</div>
+                  <div className="text-[10px] opacity-70">{step.sub}</div>
+                </div>
+              </div>
+              {i < steps.length - 1 && (
+                <ArrowRight size={14} className="text-muted-foreground/40 shrink-0" />
+              )}
+            </React.Fragment>
+          ))}
+        </div>
       </div>
 
       <Form {...form}>
