@@ -37,8 +37,8 @@ router.post("/bot/stop", async (req, res): Promise<void> => {
 
 /**
  * Full pipeline test:
- * 1. Bypass Linkvertise → clean URL
- * 2. Wrap in AdMaven → AdMaven link
+ * 1. Bypass (Linkvertise only) → clean URL  |  skip for non-Linkvertise links
+ * 2. Wrap in AdMaven → monetised link
  * 3. Post to destination Telegram channel via bot token
  */
 router.post("/bypass/test", async (req, res): Promise<void> => {
@@ -58,8 +58,13 @@ router.post("/bypass/test", async (req, res): Promise<void> => {
     const hasBotToken = Boolean(config?.telegramBotToken);
     const hasDestChannel = Boolean(config?.destTelegramChannel);
 
-    // ── STEP 1: Bypass the Linkvertise link ──────────────────────────────────
-    let cleanUrl: string | null = null;
+    // ── STEP 1: Bypass ────────────────────────────────────────────────────────
+    // • If an external bypass API is configured → always call it
+    // • Else if the URL is a Linkvertise link → use built-in bypass
+    // • Otherwise → skip bypass entirely (Mega, GDrive, etc. are already clean)
+    let cleanUrl: string = url;
+    let bypassed = false;
+    let bypassError: string | null = null;
 
     if (hasExternalBypassApi) {
       const params = new URLSearchParams({ url });
@@ -72,56 +77,82 @@ router.post("/bypass/test", async (req, res): Promise<void> => {
       });
 
       if (!response.ok) {
+        const errMsg = `Bypass API returned ${response.status}`;
         await db.insert(activityLogTable).values({
           originalUrl: url, bypassedUrl: null, sourceChannel: "manual-test",
-          status: "failed", errorMessage: `Bypass API returned ${response.status}`,
+          status: "failed", errorMessage: errMsg,
           postedToTelegram: false, postedToDiscord: false,
         });
-        res.json({ originalUrl: url, bypassedUrl: null, success: false, error: `Bypass API returned ${response.status}` });
+        res.json({
+          originalUrl: url, cleanUrl: null, finalUrl: null,
+          bypassed: false, bypassError: errMsg,
+          admavenWrapped: false, admavenError: null,
+          postedToTelegram: false, telegramError: null,
+          success: false, error: errMsg,
+        });
         return;
       }
 
       const data = await response.json() as Record<string, unknown>;
-      cleanUrl = (data["url"] ?? data["bypassed"] ?? data["result"]) as string | null ?? null;
+      const extracted = (data["url"] ?? data["bypassed"] ?? data["result"]) as string | null ?? null;
 
-      if (!cleanUrl) {
-        res.json({ originalUrl: url, bypassedUrl: null, success: false, error: "Could not parse clean URL from bypass API response" });
-        return;
-      }
-    } else {
-      if (!isSupportedByBuiltIn(url)) {
+      if (!extracted) {
+        const errMsg = "Could not parse clean URL from bypass API response";
         res.json({
-          originalUrl: url, bypassedUrl: null, success: false,
-          error: "No bypass API configured and this link type is not supported by the built-in bypass. The built-in bypass supports Linkvertise links.",
+          originalUrl: url, cleanUrl: null, finalUrl: null,
+          bypassed: false, bypassError: errMsg,
+          admavenWrapped: false, admavenError: null,
+          postedToTelegram: false, telegramError: null,
+          success: false, error: errMsg,
         });
         return;
       }
 
+      cleanUrl = extracted;
+      bypassed = true;
+    } else if (isSupportedByBuiltIn(url)) {
       req.log.info({ url }, "Using built-in Linkvertise bypass");
       const result = await builtInBypass(url);
-      cleanUrl = result.url;
 
-      if (!cleanUrl) {
+      if (!result.url) {
+        const errMsg = "Built-in bypass could not retrieve the link. Try again or configure a bypass API.";
         await db.insert(activityLogTable).values({
           originalUrl: url, bypassedUrl: null, sourceChannel: "manual-test",
-          status: "failed", errorMessage: "Built-in bypass failed",
+          status: "failed", errorMessage: errMsg,
           postedToTelegram: false, postedToDiscord: false,
         });
-        res.json({ originalUrl: url, bypassedUrl: null, success: false, error: "Built-in bypass could not retrieve the link. Try again or configure a bypass API." });
+        res.json({
+          originalUrl: url, cleanUrl: null, finalUrl: null,
+          bypassed: false, bypassError: errMsg,
+          admavenWrapped: false, admavenError: null,
+          postedToTelegram: false, telegramError: null,
+          success: false, error: errMsg,
+        });
         return;
       }
+
+      cleanUrl = result.url;
+      bypassed = true;
+    } else {
+      // Non-Linkvertise direct link (Mega, GDrive, etc.) — skip bypass
+      req.log.info({ url }, "Non-Linkvertise link — skipping bypass, using URL as-is");
+      bypassError = null;
     }
 
     // ── STEP 2: Wrap in AdMaven ──────────────────────────────────────────────
     let finalUrl = cleanUrl;
+    let admavenWrapped = false;
+    let admavenError: string | null = null;
 
     if (hasAdmavenKey) {
       req.log.info({ cleanUrl }, "Uploading to AdMaven");
       const admavenResult = await createAdmavenLink(cleanUrl, config.admavenApiKey);
       if (admavenResult.admavenUrl) {
         finalUrl = admavenResult.admavenUrl;
+        admavenWrapped = true;
       } else {
-        req.log.warn({ error: admavenResult.error }, "AdMaven failed — using clean URL");
+        admavenError = admavenResult.error ?? "AdMaven failed";
+        req.log.warn({ error: admavenError }, "AdMaven failed — using clean URL");
       }
     }
 
@@ -152,20 +183,35 @@ router.post("/bypass/test", async (req, res): Promise<void> => {
       bypassedUrl: finalUrl,
       sourceChannel: "manual-test",
       status: "success",
-      errorMessage: telegramError,
+      errorMessage: telegramError ?? admavenError,
       postedToTelegram,
       postedToDiscord: false,
     });
 
     res.json({
       originalUrl: url,
-      bypassedUrl: finalUrl,
+      cleanUrl,
+      finalUrl,
+      bypassed,
+      bypassError,
+      admavenWrapped,
+      admavenError,
+      postedToTelegram,
+      telegramError,
       success: true,
-      error: telegramError ? `Bypass succeeded but Telegram post failed: ${telegramError}` : null,
+      // backwards-compatible field used by old UI
+      bypassedUrl: finalUrl,
+      error: telegramError ?? admavenError ?? null,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    res.json({ originalUrl: url, bypassedUrl: null, success: false, error: message });
+    res.json({
+      originalUrl: url, cleanUrl: null, finalUrl: null,
+      bypassed: false, bypassError: message,
+      admavenWrapped: false, admavenError: null,
+      postedToTelegram: false, telegramError: null,
+      success: false, error: message,
+    });
   }
 });
 

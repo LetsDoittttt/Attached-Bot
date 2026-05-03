@@ -3,45 +3,57 @@ import { useGetConfig } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Terminal, ArrowRight, Activity, AlertCircle, Copy, Check, Zap, Link } from "lucide-react";
+import { Terminal, Activity, AlertCircle, Copy, Check, Zap, Link, ShieldCheck, Megaphone, Send, ArrowDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+interface PipelineResult {
+  originalUrl: string;
+  cleanUrl: string | null;
+  finalUrl: string | null;
+  bypassed: boolean;
+  bypassError: string | null;
+  admavenWrapped: boolean;
+  admavenError: string | null;
+  postedToTelegram: boolean;
+  telegramError: string | null;
+  success: boolean;
+  error: string | null;
+}
 
 export default function TestPage() {
   const { toast } = useToast();
   const [url, setUrl] = useState("");
   const [copied, setCopied] = useState(false);
+  const [result, setResult] = useState<PipelineResult | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
 
   const { data: config } = useGetConfig();
   const hasExternalApi = Boolean(config?.bypassApiUrl);
-
-  const [testResult, setTestResult] = useState<{
-    originalUrl: string;
-    bypassedUrl: string | null;
-    success: boolean;
-    error: string | null;
-  } | null>(null);
-  const [isTesting, setIsTesting] = useState(false);
+  const hasAdmaven = Boolean(config?.admavenApiKey);
+  const hasBotToken = Boolean(config?.telegramBotToken);
+  const hasDestChannel = Boolean(config?.destTelegramChannel);
 
   const handleTest = (e: React.FormEvent) => {
     e.preventDefault();
     if (!url.trim()) return;
     setIsTesting(true);
-    setTestResult(null);
+    setResult(null);
     fetch("/api/bypass/test", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: url.trim() }),
     })
       .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.error || "An error occurred while testing the pipeline.");
-        setTestResult(data);
+        const data = await res.json() as PipelineResult;
+        setResult(data);
+        if (!data.success) {
+          toast({ title: "Pipeline failed", description: data.error ?? "Unknown error", variant: "destructive" });
+        }
       })
-      .catch((error: unknown) => {
-        const msg = error instanceof Error ? error.message : "An error occurred while testing the pipeline.";
-        toast({ title: "Test Failed", description: msg, variant: "destructive" });
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : "An error occurred.";
+        toast({ title: "Request failed", description: msg, variant: "destructive" });
       })
       .finally(() => setIsTesting(false));
   };
@@ -56,31 +68,23 @@ export default function TestPage() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-3xl mx-auto">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Pipeline Tester</h1>
-        <p className="text-muted-foreground text-sm font-mono mt-1">DIAGNOSTIC_UTILITY</p>
+        <p className="text-muted-foreground text-sm font-mono mt-1">BYPASS → ADMAVEN → TELEGRAM</p>
       </div>
 
-      {/* Pipeline mode banner */}
-      <div className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-sm ${
-        hasExternalApi
-          ? "border-primary/30 bg-primary/5 text-primary"
-          : "border-yellow-500/30 bg-yellow-500/5 text-yellow-400"
-      }`}>
-        {hasExternalApi ? <Link size={16} className="mt-0.5 shrink-0" /> : <Zap size={16} className="mt-0.5 shrink-0" />}
-        <div>
-          {hasExternalApi ? (
-            <>
-              <span className="font-semibold">External API active</span>
-              <span className="text-muted-foreground ml-2 font-mono text-xs">{config?.bypassApiUrl}</span>
-            </>
-          ) : (
-            <>
-              <span className="font-semibold">Built-in Linkvertise bypass active</span>
-              <span className="text-muted-foreground block mt-0.5">
-                No external API configured. Paste a link below to test the full pipeline. Configure your own API in Setup when you have one.
-              </span>
-            </>
-          )}
-        </div>
+      {/* Config status pills */}
+      <div className="flex flex-wrap gap-2">
+        <span className={`text-xs px-2 py-1 rounded-full border font-mono flex items-center gap-1.5 ${hasExternalApi ? "border-primary/40 bg-primary/10 text-primary" : "border-yellow-500/40 bg-yellow-500/10 text-yellow-400"}`}>
+          <ShieldCheck size={11} />
+          {hasExternalApi ? "Custom bypass API" : "Built-in bypass"}
+        </span>
+        <span className={`text-xs px-2 py-1 rounded-full border font-mono flex items-center gap-1.5 ${hasAdmaven ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>
+          <Megaphone size={11} />
+          {hasAdmaven ? "AdMaven active" : "AdMaven not configured"}
+        </span>
+        <span className={`text-xs px-2 py-1 rounded-full border font-mono flex items-center gap-1.5 ${hasBotToken && hasDestChannel ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>
+          <Send size={11} />
+          {hasBotToken && hasDestChannel ? `Post to ${config?.destTelegramChannel}` : "Telegram not configured"}
+        </span>
       </div>
 
       <Card className="border-primary/20">
@@ -90,16 +94,14 @@ export default function TestPage() {
             Live Pipeline Test
           </CardTitle>
           <CardDescription>
-            {hasExternalApi
-              ? "Test your configured bypass API, AdMaven upload, and Telegram post."
-              : "Paste a link to test the built-in bypass, AdMaven upload, and Telegram post."}
+            Paste any link — Linkvertise links will be bypassed first, all other links (Mega, GDrive, etc.) skip straight to AdMaven and Telegram.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleTest} className="flex gap-3">
             <div className="flex-1">
               <Input
-                placeholder={hasExternalApi ? "https://short-link.example/..." : "https://linkvertise.com/..."}
+                placeholder="https://mega.nz/... or https://linkvertise.com/..."
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 className="font-mono text-sm bg-muted/50 border-primary/20 focus-visible:ring-primary"
@@ -112,75 +114,177 @@ export default function TestPage() {
               className="font-mono w-[120px]"
             >
               {isTesting ? (
-                <span className="flex items-center">
-                  <Activity size={14} className="mr-2 animate-spin" />
-                  TESTING...
+                <span className="flex items-center gap-2">
+                  <Activity size={14} className="animate-spin" />
+                  RUNNING...
                 </span>
               ) : (
-                "EXECUTE"
+                "RUN PIPELINE"
               )}
             </Button>
           </form>
         </CardContent>
       </Card>
 
-      {testResult && (
-        <div className="space-y-4 animate-in fade-in duration-300">
-          <h2 className="text-sm font-mono text-muted-foreground">EXECUTION_RESULT</h2>
+      {result && (
+        <div className="space-y-3 animate-in fade-in duration-300">
+          <h2 className="text-sm font-mono text-muted-foreground">PIPELINE_RESULT</h2>
 
-          <Card className={`border ${testResult.success ? 'border-emerald-500/30' : 'border-destructive/30'}`}>
-            <CardContent className="p-6 space-y-6">
+          {/* Step-by-step breakdown */}
+          <div className="space-y-2">
+
+            {/* Original URL */}
+            <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-1">
+              <p className="text-xs font-mono text-muted-foreground">INPUT</p>
+              <p className="font-mono text-sm break-all text-foreground">{result.originalUrl}</p>
+            </div>
+
+            <div className="flex justify-center">
+              <ArrowDown size={16} className="text-muted-foreground" />
+            </div>
+
+            {/* Step 1: Bypass */}
+            <div className={`rounded-lg border p-4 space-y-1 ${
+              result.bypassed
+                ? "border-emerald-500/30 bg-emerald-500/5"
+                : result.bypassError
+                ? "border-destructive/30 bg-destructive/5"
+                : "border-border bg-muted/20"
+            }`}>
               <div className="flex items-center justify-between">
-                <Badge
-                  variant="outline"
-                  className={`font-mono text-xs ${
-                    testResult.success
-                      ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                      : 'bg-destructive/10 text-destructive border-destructive/20'
-                  }`}
-                >
-                  {testResult.success ? 'SUCCESS' : 'FAILED'}
+                <p className="text-xs font-mono text-muted-foreground flex items-center gap-1.5">
+                  <ShieldCheck size={11} />
+                  STEP 1 — BYPASS
+                </p>
+                <Badge variant="outline" className={`text-xs font-mono ${
+                  result.bypassed
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                    : result.bypassError
+                    ? "border-destructive/30 bg-destructive/10 text-destructive"
+                    : "border-border text-muted-foreground"
+                }`}>
+                  {result.bypassed ? "BYPASSED" : result.bypassError ? "FAILED" : "SKIPPED"}
                 </Badge>
               </div>
+              {result.bypassed && result.cleanUrl && (
+                <p className="font-mono text-sm break-all text-emerald-400">{result.cleanUrl}</p>
+              )}
+              {result.bypassError && (
+                <p className="font-mono text-sm text-destructive flex items-start gap-2">
+                  <AlertCircle size={13} className="mt-0.5 shrink-0" />
+                  {result.bypassError}
+                </p>
+              )}
+              {!result.bypassed && !result.bypassError && (
+                <p className="text-xs text-muted-foreground">Not a Linkvertise link — using URL directly.</p>
+              )}
+            </div>
 
-              <div className="space-y-4 relative">
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground font-mono">ORIGINAL_URL</Label>
-                  <div className="p-3 bg-muted rounded-md font-mono text-sm text-foreground break-all">
-                    {testResult.originalUrl}
-                  </div>
-                </div>
+            <div className="flex justify-center">
+              <ArrowDown size={16} className="text-muted-foreground" />
+            </div>
 
-                <div className="flex justify-center -my-2 relative z-10">
-                  <div className="bg-background p-2 rounded-full border border-border">
-                    <ArrowRight size={16} className="text-primary" />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground font-mono">BYPASSED_RESULT</Label>
-                  {testResult.success && testResult.bypassedUrl ? (
-                    <div className="p-3 bg-primary/10 border border-primary/20 rounded-md font-mono text-sm text-primary break-all flex justify-between items-start gap-4">
-                      <span>{testResult.bypassedUrl}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 shrink-0 text-primary hover:text-primary hover:bg-primary/20 -mt-1 -mr-1"
-                        onClick={() => handleCopy(testResult.bypassedUrl!)}
-                      >
-                        {copied ? <Check size={14} /> : <Copy size={14} />}
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md font-mono text-sm text-destructive flex items-start gap-3">
-                      <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                      <span>{testResult.error || "Unknown error occurred"}</span>
-                    </div>
-                  )}
-                </div>
+            {/* Step 2: AdMaven */}
+            <div className={`rounded-lg border p-4 space-y-1 ${
+              result.admavenWrapped
+                ? "border-emerald-500/30 bg-emerald-500/5"
+                : result.admavenError
+                ? "border-yellow-500/30 bg-yellow-500/5"
+                : "border-border bg-muted/20"
+            }`}>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-mono text-muted-foreground flex items-center gap-1.5">
+                  <Megaphone size={11} />
+                  STEP 2 — ADMAVEN
+                </p>
+                <Badge variant="outline" className={`text-xs font-mono ${
+                  result.admavenWrapped
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                    : result.admavenError
+                    ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-400"
+                    : "border-border text-muted-foreground"
+                }`}>
+                  {result.admavenWrapped ? "WRAPPED" : result.admavenError ? "FAILED" : "SKIPPED"}
+                </Badge>
               </div>
-            </CardContent>
-          </Card>
+              {result.admavenWrapped && result.finalUrl && (
+                <p className="font-mono text-sm break-all text-emerald-400">{result.finalUrl}</p>
+              )}
+              {result.admavenError && (
+                <p className="font-mono text-sm text-yellow-400 flex items-start gap-2">
+                  <AlertCircle size={13} className="mt-0.5 shrink-0" />
+                  {result.admavenError}
+                </p>
+              )}
+              {!result.admavenWrapped && !result.admavenError && (
+                <p className="text-xs text-muted-foreground">No AdMaven API key configured.</p>
+              )}
+            </div>
+
+            <div className="flex justify-center">
+              <ArrowDown size={16} className="text-muted-foreground" />
+            </div>
+
+            {/* Step 3: Telegram */}
+            <div className={`rounded-lg border p-4 space-y-1 ${
+              result.postedToTelegram
+                ? "border-emerald-500/30 bg-emerald-500/5"
+                : result.telegramError
+                ? "border-destructive/30 bg-destructive/5"
+                : "border-border bg-muted/20"
+            }`}>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-mono text-muted-foreground flex items-center gap-1.5">
+                  <Send size={11} />
+                  STEP 3 — TELEGRAM POST
+                </p>
+                <Badge variant="outline" className={`text-xs font-mono ${
+                  result.postedToTelegram
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                    : result.telegramError
+                    ? "border-destructive/30 bg-destructive/10 text-destructive"
+                    : "border-border text-muted-foreground"
+                }`}>
+                  {result.postedToTelegram ? "POSTED" : result.telegramError ? "FAILED" : "SKIPPED"}
+                </Badge>
+              </div>
+              {result.postedToTelegram && (
+                <p className="text-xs text-emerald-400">Message posted to {config?.destTelegramChannel ?? "channel"}.</p>
+              )}
+              {result.telegramError && (
+                <p className="font-mono text-sm text-destructive flex items-start gap-2">
+                  <AlertCircle size={13} className="mt-0.5 shrink-0" />
+                  {result.telegramError}
+                </p>
+              )}
+              {!result.postedToTelegram && !result.telegramError && (
+                <p className="text-xs text-muted-foreground">Bot token or destination channel not configured.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Final URL copy box */}
+          {result.finalUrl && (
+            <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-mono text-muted-foreground mb-1 flex items-center gap-1.5">
+                    <Link size={10} />
+                    FINAL URL
+                  </p>
+                  <p className="font-mono text-sm text-primary break-all">{result.finalUrl}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 text-primary hover:bg-primary/20"
+                  onClick={() => handleCopy(result.finalUrl!)}
+                >
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
