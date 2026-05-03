@@ -114,40 +114,62 @@ async function bypassLinkvertieDirect(url: string): Promise<string | null> {
 /**
  * Upload a clean URL to AdMaven and return the AdMaven short link.
  * AdMaven API: https://api.ad-maven.com/v1/links/create?key={key}&url={url}
+ * Retries up to 3 times on 5xx / network errors with exponential backoff.
  */
 export async function createAdmavenLink(cleanUrl: string, apiKey: string): Promise<{ admavenUrl: string | null; error: string | null }> {
-  try {
-    const endpoint = `https://api.ad-maven.com/v1/links/create?key=${encodeURIComponent(apiKey)}&url=${encodeURIComponent(cleanUrl)}`;
-    const res = await fetch(endpoint, {
-      headers: { "User-Agent": "Mozilla/5.0" },
-      signal: AbortSignal.timeout(15000),
-    });
+  const MAX_ATTEMPTS = 3;
+  const endpoint = `https://api.ad-maven.com/v1/links/create?key=${encodeURIComponent(apiKey)}&url=${encodeURIComponent(cleanUrl)}`;
 
-    if (!res.ok) {
-      return { admavenUrl: null, error: `AdMaven API returned ${res.status}` };
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(endpoint, {
+        headers: { "User-Agent": "Mozilla/5.0" },
+        signal: AbortSignal.timeout(15000),
+      });
+
+      // Retry on server-side errors (5xx) — client errors (4xx) are final
+      if (!res.ok) {
+        const isRetryable = res.status >= 500;
+        if (isRetryable && attempt < MAX_ATTEMPTS) {
+          const delay = attempt * 1500; // 1.5s, 3s
+          logger.warn({ status: res.status, attempt, delay }, "AdMaven returned 5xx — retrying");
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        return { admavenUrl: null, error: `AdMaven API returned ${res.status}` };
+      }
+
+      const data = await res.json() as Record<string, unknown>;
+
+      // AdMaven response shapes: { status: 1, shortenedUrl: "..." } or { data: { url: "..." } }
+      const link =
+        (typeof data["shortenedUrl"] === "string" ? data["shortenedUrl"] : null) ??
+        (typeof data["short_url"] === "string" ? data["short_url"] : null) ??
+        (typeof (data["data"] as Record<string, unknown> | undefined)?.["url"] === "string"
+          ? (data["data"] as Record<string, string>)["url"]
+          : null);
+
+      if (!link) {
+        logger.warn({ data, cleanUrl }, "AdMaven response did not contain a link");
+        return { admavenUrl: null, error: "AdMaven returned an unexpected response format" };
+      }
+
+      if (attempt > 1) logger.info({ attempt }, "AdMaven succeeded after retry");
+      return { admavenUrl: link, error: null };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      if (attempt < MAX_ATTEMPTS) {
+        const delay = attempt * 1500;
+        logger.warn({ err, attempt, delay }, "AdMaven request threw — retrying");
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      logger.error({ err, cleanUrl }, "AdMaven API call failed after all retries");
+      return { admavenUrl: null, error: message };
     }
-
-    const data = await res.json() as Record<string, unknown>;
-
-    // AdMaven response: { status: 1, shortenedUrl: "https://..." } or { data: { url: "..." } }
-    const link =
-      (typeof data["shortenedUrl"] === "string" ? data["shortenedUrl"] : null) ??
-      (typeof data["short_url"] === "string" ? data["short_url"] : null) ??
-      (typeof (data["data"] as Record<string, unknown> | undefined)?.["url"] === "string"
-        ? (data["data"] as Record<string, string>)["url"]
-        : null);
-
-    if (!link) {
-      logger.warn({ data, cleanUrl }, "AdMaven response did not contain a link");
-      return { admavenUrl: null, error: "AdMaven returned an unexpected response format" };
-    }
-
-    return { admavenUrl: link, error: null };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    logger.error({ err, cleanUrl }, "AdMaven API call failed");
-    return { admavenUrl: null, error: message };
   }
+
+  return { admavenUrl: null, error: "AdMaven failed after all retries" };
 }
 
 /**

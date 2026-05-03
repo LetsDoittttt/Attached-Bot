@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { Eye, EyeOff, Save, CheckCircle2, Link2, Radio, Send, Megaphone, ArrowRight, Rss, ShieldCheck, Zap } from "lucide-react";
+import { Eye, EyeOff, Save, CheckCircle2, Link2, Radio, Send, Megaphone, ArrowRight, Rss, ShieldCheck, Zap, Loader2, BadgeCheck, XCircle } from "lucide-react";
 
 const formSchema = z.object({
   telegramBotToken: z.string(),
@@ -39,6 +39,8 @@ export default function ConfigPage() {
   const [showAdmavenKey, setShowAdmavenKey] = useState(false);
   const [showHash, setShowHash] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [botVerified, setBotVerified] = useState<{ username: string } | { error: string } | null>(null);
 
   const { data: config, isLoading } = useGetConfig({
     query: { queryKey: getGetConfigQueryKey() }
@@ -90,6 +92,32 @@ export default function ConfigPage() {
       });
     }
   }, [config]);
+
+  const handleVerifyBotToken = async () => {
+    const token = form.getValues("telegramBotToken").trim();
+    if (!token) return;
+    setVerifying(true);
+    setBotVerified(null);
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+      const data = await res.json() as Record<string, unknown>;
+      if (data["ok"] === true) {
+        const result = data["result"] as Record<string, unknown>;
+        const username = typeof result["username"] === "string" ? result["username"] : "unknown";
+        setBotVerified({ username });
+        toast({ title: "Bot verified", description: `@${username} is valid and ready.` });
+      } else {
+        const desc = typeof data["description"] === "string" ? data["description"] : "Invalid token";
+        setBotVerified({ error: desc });
+        toast({ title: "Verification failed", description: desc, variant: "destructive" });
+      }
+    } catch {
+      setBotVerified({ error: "Could not reach Telegram API" });
+      toast({ title: "Verification failed", description: "Could not reach Telegram API", variant: "destructive" });
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   const onSubmit = (data: FormValues) => {
     const sourceChannels = data.sourceChannelsRaw
@@ -212,7 +240,7 @@ export default function ConfigPage() {
                 on Telegram, then <span className="text-foreground font-medium">add the bot as an admin</span> to your destination channel.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
               <FormField
                 control={form.control}
                 name="telegramBotToken"
@@ -226,6 +254,7 @@ export default function ConfigPage() {
                           type={showApiKey ? "text" : "password"}
                           placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyz"
                           {...field}
+                          onChange={(e) => { field.onChange(e); setBotVerified(null); }}
                         />
                         <button
                           type="button"
@@ -243,6 +272,36 @@ export default function ConfigPage() {
                   </FormItem>
                 )}
               />
+
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs font-mono h-8"
+                  disabled={!hasBotToken || verifying}
+                  onClick={handleVerifyBotToken}
+                >
+                  {verifying ? (
+                    <><Loader2 size={12} className="mr-1.5 animate-spin" />Verifying...</>
+                  ) : (
+                    <>Verify Token</>
+                  )}
+                </Button>
+
+                {botVerified && "username" in botVerified && (
+                  <span className="flex items-center gap-1.5 text-xs text-emerald-500">
+                    <BadgeCheck size={14} />
+                    @{botVerified.username} — valid
+                  </span>
+                )}
+                {botVerified && "error" in botVerified && (
+                  <span className="flex items-center gap-1.5 text-xs text-destructive">
+                    <XCircle size={14} />
+                    {botVerified.error}
+                  </span>
+                )}
+              </div>
             </CardContent>
           </Card>
 
