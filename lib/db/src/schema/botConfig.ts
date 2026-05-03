@@ -12,6 +12,7 @@ export const botConfigTable = pgTable("bot_config", {
   bypassApiUrl: text("bypass_api_url").notNull().default(""),
   bypassApiKey: text("bypass_api_key").notNull().default(""),
   admavenApiKey: text("admaven_api_key").notNull().default(""),
+  telegramBotToken: text("telegram_bot_token").notNull().default(""),
   postTemplate: text("post_template").notNull().default("🔗 New Link Posted!\n\n✅ Bypassed Link: {bypassed}"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { GetBotStatusResponse, StartBotResponse, StopBotResponse, TestBypassBody } from "@workspace/api-zod";
 import { db, activityLogTable, botConfigTable } from "@workspace/db";
 import { builtInBypass, isSupportedByBuiltIn, createAdmavenLink } from "../lib/bypass";
+import { sendTelegramMessage } from "../lib/telegram";
 
 const router: IRouter = Router();
 
@@ -35,10 +36,10 @@ router.post("/bot/stop", async (req, res): Promise<void> => {
 });
 
 /**
- * Full pipeline:
- * 1. Bypass Linkvertise link → clean URL
- * 2. Upload clean URL to AdMaven → AdMaven link
- * 3. Return the AdMaven link for posting
+ * Full pipeline test:
+ * 1. Bypass Linkvertise → clean URL
+ * 2. Wrap in AdMaven → AdMaven link
+ * 3. Post to destination Telegram channel via bot token
  */
 router.post("/bypass/test", async (req, res): Promise<void> => {
   const parsed = TestBypassBody.safeParse(req.body);
@@ -54,12 +55,13 @@ router.post("/bypass/test", async (req, res): Promise<void> => {
     const config = configs[0];
     const hasExternalBypassApi = Boolean(config?.bypassApiUrl);
     const hasAdmavenKey = Boolean(config?.admavenApiKey);
+    const hasBotToken = Boolean(config?.telegramBotToken);
+    const hasDestChannel = Boolean(config?.destTelegramChannel);
 
     // ── STEP 1: Bypass the Linkvertise link ──────────────────────────────────
     let cleanUrl: string | null = null;
 
     if (hasExternalBypassApi) {
-      // Use configured external bypass API
       const params = new URLSearchParams({ url });
       const headers: Record<string, string> = {};
       if (config.bypassApiKey) headers["Authorization"] = `Bearer ${config.bypassApiKey}`;
@@ -87,7 +89,6 @@ router.post("/bypass/test", async (req, res): Promise<void> => {
         return;
       }
     } else {
-      // Use built-in bypass
       if (!isSupportedByBuiltIn(url)) {
         res.json({
           originalUrl: url, bypassedUrl: null, success: false,
@@ -111,34 +112,57 @@ router.post("/bypass/test", async (req, res): Promise<void> => {
       }
     }
 
-    // ── STEP 2: Upload to AdMaven ────────────────────────────────────────────
+    // ── STEP 2: Wrap in AdMaven ──────────────────────────────────────────────
     let finalUrl = cleanUrl;
 
     if (hasAdmavenKey) {
-      req.log.info({ cleanUrl }, "Uploading clean URL to AdMaven");
+      req.log.info({ cleanUrl }, "Uploading to AdMaven");
       const admavenResult = await createAdmavenLink(cleanUrl, config.admavenApiKey);
-
       if (admavenResult.admavenUrl) {
         finalUrl = admavenResult.admavenUrl;
-        req.log.info({ admavenUrl: finalUrl }, "AdMaven link created");
       } else {
-        req.log.warn({ error: admavenResult.error }, "AdMaven link creation failed — using clean URL as fallback");
-        // Don't fail the whole thing, just log and use cleanUrl
+        req.log.warn({ error: admavenResult.error }, "AdMaven failed — using clean URL");
       }
     }
 
-    // ── STEP 3: Log and return ───────────────────────────────────────────────
+    // ── STEP 3: Post to Telegram via bot token ───────────────────────────────
+    let postedToTelegram = false;
+    let telegramError: string | null = null;
+
+    if (hasBotToken && hasDestChannel) {
+      const template = config.postTemplate || "{bypassed}";
+      const message = template.replace("{bypassed}", finalUrl);
+
+      const tgResult = await sendTelegramMessage(
+        config.telegramBotToken,
+        config.destTelegramChannel,
+        message
+      );
+
+      postedToTelegram = tgResult.ok;
+      if (!tgResult.ok) {
+        telegramError = tgResult.error;
+        req.log.warn({ error: tgResult.error }, "Telegram post failed");
+      }
+    }
+
+    // ── STEP 4: Log and return ───────────────────────────────────────────────
     await db.insert(activityLogTable).values({
       originalUrl: url,
       bypassedUrl: finalUrl,
       sourceChannel: "manual-test",
       status: "success",
-      errorMessage: null,
-      postedToTelegram: false,
+      errorMessage: telegramError,
+      postedToTelegram,
       postedToDiscord: false,
     });
 
-    res.json({ originalUrl: url, bypassedUrl: finalUrl, success: true, error: null });
+    res.json({
+      originalUrl: url,
+      bypassedUrl: finalUrl,
+      success: true,
+      error: telegramError ? `Bypass succeeded but Telegram post failed: ${telegramError}` : null,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     res.json({ originalUrl: url, bypassedUrl: null, success: false, error: message });

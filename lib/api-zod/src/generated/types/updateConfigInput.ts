@@ -15,5 +15,6 @@ export interface UpdateConfigInput {
   bypassApiUrl?: string;
   bypassApiKey?: string;
   admavenApiKey?: string;
+  telegramBotToken?: string;
   postTemplate?: string;
 }

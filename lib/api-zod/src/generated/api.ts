@@ -28,6 +28,7 @@ export const GetConfigResponse = zod.object({
   bypassApiUrl: zod.string(),
   bypassApiKey: zod.string(),
   admavenApiKey: zod.string(),
+  telegramBotToken: zod.string(),
   postTemplate: zod.string(),
   updatedAt: zod.coerce.date(),
 });
@@ -44,6 +45,7 @@ export const UpdateConfigBody = zod.object({
   bypassApiUrl: zod.string().optional(),
   bypassApiKey: zod.string().optional(),
   admavenApiKey: zod.string().optional(),
+  telegramBotToken: zod.string().optional(),
   postTemplate: zod.string().optional(),
 });
 
@@ -57,6 +59,7 @@ export const UpdateConfigResponse = zod.object({
   bypassApiUrl: zod.string(),
   bypassApiKey: zod.string(),
   admavenApiKey: zod.string(),
+  telegramBotToken: zod.string(),
   postTemplate: zod.string(),
   updatedAt: zod.coerce.date(),
 });

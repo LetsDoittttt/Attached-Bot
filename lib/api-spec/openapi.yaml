@@ -196,6 +196,8 @@ components:
           type: string
         admavenApiKey:
           type: string
+        telegramBotToken:
+          type: string
         postTemplate:
           type: string
         updatedAt:
@@ -211,6 +213,7 @@ components:
         - bypassApiUrl
         - bypassApiKey
         - admavenApiKey
+        - telegramBotToken
         - postTemplate
         - updatedAt
 
@@ -234,6 +237,8 @@ components:
         bypassApiKey:
           type: string
         admavenApiKey:
+          type: string
+        telegramBotToken:
           type: string
         postTemplate:
           type: string

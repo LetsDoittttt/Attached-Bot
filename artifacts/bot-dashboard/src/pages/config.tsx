@@ -18,6 +18,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Eye, EyeOff, Save, CheckCircle2, Link2, Radio, Send, Megaphone, ArrowRight, Rss, ShieldCheck, Zap } from "lucide-react";
 
 const formSchema = z.object({
+  telegramBotToken: z.string(),
   bypassApiUrl: z.string().url("Must be a valid URL").or(z.literal("")),
   bypassApiKey: z.string(),
   admavenApiKey: z.string(),
@@ -60,6 +61,7 @@ export default function ConfigPage() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      telegramBotToken: "",
       bypassApiUrl: "",
       bypassApiKey: "",
       admavenApiKey: "",
@@ -75,6 +77,7 @@ export default function ConfigPage() {
   useEffect(() => {
     if (config) {
       form.reset({
+        telegramBotToken: config.telegramBotToken ?? "",
         bypassApiUrl: config.bypassApiUrl ?? "",
         bypassApiKey: config.bypassApiKey ?? "",
         admavenApiKey: config.admavenApiKey ?? "",
@@ -96,6 +99,7 @@ export default function ConfigPage() {
 
     updateConfig.mutate({
       data: {
+        telegramBotToken: data.telegramBotToken,
         bypassApiUrl: data.bypassApiUrl,
         bypassApiKey: data.bypassApiKey,
         admavenApiKey: data.admavenApiKey,
@@ -113,6 +117,7 @@ export default function ConfigPage() {
   const hasSource = Boolean(watched.sourceChannelsRaw?.trim());
   const hasBypass = Boolean(watched.bypassApiUrl?.trim());
   const hasAdmaven = Boolean(watched.admavenApiKey?.trim());
+  const hasBotToken = Boolean(watched.telegramBotToken?.trim());
   const hasDest = Boolean(watched.destTelegramChannel?.trim());
 
   if (isLoading) {
@@ -148,8 +153,8 @@ export default function ConfigPage() {
     {
       icon: <Send size={15} />,
       label: "Post",
-      sub: hasDest ? "Channel set" : "No channel",
-      status: hasDest ? "active" : "idle",
+      sub: hasBotToken && hasDest ? "Bot ready" : !hasBotToken ? "No bot token" : "No channel",
+      status: hasBotToken && hasDest ? "active" : "idle",
     },
   ];
 
@@ -191,6 +196,55 @@ export default function ConfigPage() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+
+          {/* TELEGRAM BOT */}
+          <Card className={hasBotToken ? "border-primary/30" : ""}>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Send size={16} className="text-primary" />
+                <CardTitle className="text-base">Telegram Bot</CardTitle>
+              </div>
+              <CardDescription>
+                Your bot posts the AdMaven link to the destination channel. Create one at{" "}
+                <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-2 hover:underline">
+                  @BotFather
+                </a>{" "}
+                on Telegram, then <span className="text-foreground font-medium">add the bot as an admin</span> to your destination channel.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FormField
+                control={form.control}
+                name="telegramBotToken"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bot Token</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          className="font-mono text-sm pr-10"
+                          type={showApiKey ? "text" : "password"}
+                          placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyz"
+                          {...field}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowApiKey(!showApiKey)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {showApiKey ? <EyeOff size={15} /> : <Eye size={15} />}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormDescription className="text-xs">
+                      From @BotFather — looks like <code className="bg-muted px-1 rounded">123456789:ABCdef...</code>
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
 
           {/* BYPASS API */}
           <Card>

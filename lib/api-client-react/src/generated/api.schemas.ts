@@ -19,6 +19,7 @@ export interface BotConfig {
   bypassApiUrl: string;
   bypassApiKey: string;
   admavenApiKey: string;
+  telegramBotToken: string;
   postTemplate: string;
   updatedAt: string;
 }
@@ -32,6 +33,7 @@ export interface UpdateConfigInput {
   bypassApiUrl?: string;
   bypassApiKey?: string;
   admavenApiKey?: string;
+  telegramBotToken?: string;
   postTemplate?: string;
 }
 
