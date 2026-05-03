@@ -1,31 +1,31 @@
 import React, { useEffect, useState } from "react";
-import { 
-  useGetConfig, 
+import {
+  useGetConfig,
   getGetConfigQueryKey,
   useUpdateConfig
 } from "@workspace/api-client-react";
-import { useForm, useFieldArray } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Eye, EyeOff, Save } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { Eye, EyeOff, Save, CheckCircle2, Link2, Radio, Send } from "lucide-react";
 
 const formSchema = z.object({
-  telegramApiId: z.string().min(1, "Telegram API ID is required"),
-  telegramApiHash: z.string().min(1, "Telegram API Hash is required"),
-  sourceChannels: z.array(z.object({ value: z.string().min(1, "Channel name is required") })).min(1, "At least one source channel is required"),
+  bypassApiUrl: z.string().url("Must be a valid URL").or(z.literal("")),
+  bypassApiKey: z.string(),
+  sourceChannelsRaw: z.string().min(1, "Add at least one source channel"),
   destTelegramChannel: z.string().min(1, "Destination channel is required"),
-  discordWebhookUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-  bypassApiUrl: z.string().url("Must be a valid URL"),
-  bypassApiKey: z.string().min(1, "Bypass API Key is required"),
+  discordWebhookUrl: z.string().url("Must be a valid URL").or(z.literal("")),
   postTemplate: z.string().min(1, "Post template is required"),
+  telegramApiId: z.string(),
+  telegramApiHash: z.string(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -33,30 +33,24 @@ type FormValues = z.infer<typeof formSchema>;
 export default function ConfigPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [showHash, setShowHash] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [showHash, setShowHash] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const { data: config, isLoading } = useGetConfig({
-    query: {
-      queryKey: getGetConfigQueryKey(),
-    }
+    query: { queryKey: getGetConfigQueryKey() }
   });
 
   const updateConfig = useUpdateConfig({
     mutation: {
       onSuccess: (data) => {
-        toast({
-          title: "Configuration Saved",
-          description: "Bot configuration has been updated successfully.",
-        });
         queryClient.setQueryData(getGetConfigQueryKey(), data);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2500);
+        toast({ title: "Saved", description: "Configuration updated successfully." });
       },
-      onError: (error) => {
-        toast({
-          title: "Error",
-          description: "Failed to save configuration.",
-          variant: "destructive"
-        });
+      onError: () => {
+        toast({ title: "Error", description: "Failed to save configuration.", variant: "destructive" });
       }
     }
   });
@@ -64,289 +58,313 @@ export default function ConfigPage() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      telegramApiId: "",
-      telegramApiHash: "",
-      sourceChannels: [{ value: "" }],
-      destTelegramChannel: "",
-      discordWebhookUrl: "",
       bypassApiUrl: "",
       bypassApiKey: "",
-      postTemplate: "",
+      sourceChannelsRaw: "",
+      destTelegramChannel: "",
+      discordWebhookUrl: "",
+      postTemplate: "✅ Bypassed Link: {bypassed}",
+      telegramApiId: "",
+      telegramApiHash: "",
     }
-  });
-
-  const { fields, append, remove } = useFieldArray({
-    name: "sourceChannels",
-    control: form.control,
   });
 
   useEffect(() => {
     if (config) {
       form.reset({
-        telegramApiId: config.telegramApiId,
-        telegramApiHash: config.telegramApiHash,
-        sourceChannels: config.sourceChannels.length 
-          ? config.sourceChannels.map(c => ({ value: c }))
-          : [{ value: "" }],
-        destTelegramChannel: config.destTelegramChannel,
-        discordWebhookUrl: config.discordWebhookUrl || "",
-        bypassApiUrl: config.bypassApiUrl,
-        bypassApiKey: config.bypassApiKey,
-        postTemplate: config.postTemplate,
+        bypassApiUrl: config.bypassApiUrl ?? "",
+        bypassApiKey: config.bypassApiKey ?? "",
+        sourceChannelsRaw: config.sourceChannels?.join("\n") ?? "",
+        destTelegramChannel: config.destTelegramChannel ?? "",
+        discordWebhookUrl: config.discordWebhookUrl ?? "",
+        postTemplate: config.postTemplate ?? "✅ Bypassed Link: {bypassed}",
+        telegramApiId: config.telegramApiId ?? "",
+        telegramApiHash: config.telegramApiHash ?? "",
       });
     }
-  }, [config, form]);
+  }, [config]);
 
   const onSubmit = (data: FormValues) => {
+    const sourceChannels = data.sourceChannelsRaw
+      .split("\n")
+      .map(c => c.trim())
+      .filter(Boolean);
+
     updateConfig.mutate({
       data: {
-        ...data,
-        sourceChannels: data.sourceChannels.map(c => c.value),
+        bypassApiUrl: data.bypassApiUrl,
+        bypassApiKey: data.bypassApiKey,
+        sourceChannels,
+        destTelegramChannel: data.destTelegramChannel,
+        discordWebhookUrl: data.discordWebhookUrl,
+        postTemplate: data.postTemplate,
+        telegramApiId: data.telegramApiId,
+        telegramApiHash: data.telegramApiHash,
       }
     });
   };
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Configuration</h1>
-          <p className="text-muted-foreground text-sm font-mono mt-1">BOT_PARAMETERS</p>
-        </div>
-        <Card>
-          <CardContent className="pt-6 space-y-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-24 w-full" />
-          </CardContent>
-        </Card>
+      <div className="space-y-6 max-w-2xl">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-48 w-full" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-16 max-w-2xl">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Configuration</h1>
-        <p className="text-muted-foreground text-sm font-mono mt-1">BOT_PARAMETERS</p>
+        <h1 className="text-2xl font-bold tracking-tight">Setup</h1>
+        <p className="text-muted-foreground text-sm mt-1">Configure where to get links and where to post them</p>
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+
+          {/* BYPASS API */}
           <Card>
-            <CardHeader>
-              <CardTitle>Telegram Credentials</CardTitle>
-              <CardDescription>Authentication for the Telegram client</CardDescription>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Link2 size={16} className="text-primary" />
+                <CardTitle className="text-base">Bypass API</CardTitle>
+              </div>
+              <CardDescription>
+                Your Linkvertise / AdMaven bypass service endpoint. The bot will call this to get the clean link.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="telegramApiId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>API ID</FormLabel>
-                      <FormControl>
-                        <Input className="font-mono text-sm" placeholder="1234567" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="telegramApiHash"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>API Hash</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input 
-                            className="font-mono text-sm pr-10" 
-                            type={showHash ? "text" : "password"} 
-                            placeholder="0123456789abcdef0123456789abcdef" 
-                            {...field} 
-                          />
-                          <button 
-                            type="button"
-                            onClick={() => setShowHash(!showHash)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                          >
-                            {showHash ? <EyeOff size={16} /> : <Eye size={16} />}
-                          </button>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Routing</CardTitle>
-              <CardDescription>Where to listen and where to post</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <label className="mb-2 block text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Source Channels</label>
-                <div className="space-y-3">
-                  {fields.map((field, index) => (
-                    <FormField
-                      key={field.id}
-                      control={form.control}
-                      name={`sourceChannels.${index}.value`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <div className="flex gap-2 items-start">
-                            <FormControl>
-                              <Input className="font-mono text-sm" placeholder="@channel_name or id" {...field} />
-                            </FormControl>
-                            <Button 
-                              type="button" 
-                              variant="outline" 
-                              size="icon"
-                              onClick={() => remove(index)}
-                              disabled={fields.length === 1}
-                              className="shrink-0"
-                            >
-                              <Trash2 size={16} className="text-destructive" />
-                            </Button>
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  ))}
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
-                    className="mt-2 text-xs font-mono"
-                    onClick={() => append({ value: "" })}
-                  >
-                    <Plus size={14} className="mr-2" /> ADD CHANNEL
-                  </Button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border">
-                <FormField
-                  control={form.control}
-                  name="destTelegramChannel"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Destination Telegram Channel</FormLabel>
-                      <FormControl>
-                        <Input className="font-mono text-sm" placeholder="@my_dest_channel" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="discordWebhookUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Discord Webhook (Optional)</FormLabel>
-                      <FormControl>
-                        <Input className="font-mono text-sm" placeholder="https://discord.com/api/webhooks/..." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Bypass API & Formatting</CardTitle>
-              <CardDescription>Configuration for the link bypass service</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="bypassApiUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>API Endpoint URL</FormLabel>
-                      <FormControl>
-                        <Input className="font-mono text-sm" placeholder="https://api.bypasser.ext/v1/..." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="bypassApiKey"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>API Key</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input 
-                            className="font-mono text-sm pr-10" 
-                            type={showApiKey ? "text" : "password"} 
-                            placeholder="sk_..." 
-                            {...field} 
-                          />
-                          <button 
-                            type="button"
-                            onClick={() => setShowApiKey(!showApiKey)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                          >
-                            {showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
-                          </button>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
               <FormField
                 control={form.control}
-                name="postTemplate"
+                name="bypassApiUrl"
                 render={({ field }) => (
-                  <FormItem className="pt-2">
-                    <FormLabel>Post Template</FormLabel>
+                  <FormItem>
+                    <FormLabel>API URL</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        className="font-mono text-sm min-h-[120px] resize-y" 
-                        placeholder="Here is your link: {bypassed}"
-                        {...field} 
+                      <Input
+                        className="font-mono text-sm"
+                        placeholder="https://your-bypass-site.com/api"
+                        {...field}
                       />
                     </FormControl>
                     <FormDescription className="text-xs">
-                      Use <code className="bg-muted px-1 py-0.5 rounded text-primary">{"{bypassed}"}</code> to inject the final bypassed URL.
+                      The endpoint that accepts a <code className="bg-muted px-1 rounded">?url=</code> parameter and returns the bypassed link.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </CardContent>
-            <CardFooter className="bg-muted/20 flex justify-end p-4 border-t border-border">
-              <Button 
-                type="submit" 
-                disabled={updateConfig.isPending}
-                className="font-mono text-xs"
-              >
-                {updateConfig.isPending ? "SAVING..." : (
-                  <>
-                    <Save size={14} className="mr-2" /> SAVE CONFIGURATION
-                  </>
+
+              <FormField
+                control={form.control}
+                name="bypassApiKey"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>API Key <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          className="font-mono text-sm pr-10"
+                          type={showApiKey ? "text" : "password"}
+                          placeholder="Leave blank if not needed"
+                          {...field}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowApiKey(!showApiKey)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {showApiKey ? <EyeOff size={15} /> : <Eye size={15} />}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </Button>
-            </CardFooter>
+              />
+            </CardContent>
           </Card>
+
+          {/* CHANNELS */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Radio size={16} className="text-primary" />
+                <CardTitle className="text-base">Channels</CardTitle>
+              </div>
+              <CardDescription>
+                Which channels to watch for links, and where to post the bypassed results.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="sourceChannelsRaw"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Source Channels <span className="text-muted-foreground font-normal">(where to get links from)</span></FormLabel>
+                    <FormControl>
+                      <Textarea
+                        className="font-mono text-sm min-h-[100px] resize-none"
+                        placeholder={"@channel_one\n@channel_two\n-1001234567890"}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs">
+                      One channel per line. Use <code className="bg-muted px-1 rounded">@username</code> or a numeric channel ID.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="destTelegramChannel"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Post To (Telegram) <span className="text-muted-foreground font-normal">(where bypassed links are posted)</span></FormLabel>
+                    <FormControl>
+                      <Input
+                        className="font-mono text-sm"
+                        placeholder="@my_posting_channel"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="discordWebhookUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Discord Webhook <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                    <FormControl>
+                      <Input
+                        className="font-mono text-sm"
+                        placeholder="https://discord.com/api/webhooks/..."
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          {/* POST MESSAGE */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Send size={16} className="text-primary" />
+                <CardTitle className="text-base">Post Message</CardTitle>
+              </div>
+              <CardDescription>
+                The message sent when a link is bypassed. Use <code className="bg-muted px-1 rounded text-primary text-xs">{"{bypassed}"}</code> where the link should appear.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FormField
+                control={form.control}
+                name="postTemplate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Textarea
+                        className="font-mono text-sm min-h-[90px] resize-none"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          {/* TELEGRAM CREDENTIALS — collapsed/advanced */}
+          <details className="group">
+            <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-2 select-none">
+              <span className="text-xs border border-border rounded px-2 py-0.5 font-mono group-open:border-primary group-open:text-primary transition-colors">
+                ADVANCED — Telegram API Credentials
+              </span>
+            </summary>
+            <Card className="mt-3">
+              <CardContent className="pt-5 space-y-4">
+                <p className="text-xs text-muted-foreground">
+                  Get these from <a href="https://my.telegram.org" target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-4 hover:underline">my.telegram.org</a>. Required for the bot to connect to Telegram.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="telegramApiId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>API ID</FormLabel>
+                        <FormControl>
+                          <Input className="font-mono text-sm" placeholder="1234567" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="telegramApiHash"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>API Hash</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              className="font-mono text-sm pr-10"
+                              type={showHash ? "text" : "password"}
+                              placeholder="0123456789abcdef..."
+                              {...field}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowHash(!showHash)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              {showHash ? <EyeOff size={15} /> : <Eye size={15} />}
+                            </button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </details>
+
+          <div className="flex justify-end pt-2">
+            <Button
+              type="submit"
+              disabled={updateConfig.isPending}
+              className="min-w-[140px] font-mono text-xs transition-all"
+            >
+              {updateConfig.isPending ? (
+                "SAVING..."
+              ) : saved ? (
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 size={14} /> SAVED
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Save size={14} /> SAVE SETTINGS
+                </span>
+              )}
+            </Button>
+          </div>
         </form>
       </Form>
     </div>
