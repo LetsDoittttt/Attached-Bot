@@ -207,13 +207,18 @@ export default function ConfigPage() {
                     <FormLabel>Source Channels <span className="text-muted-foreground font-normal">(where to get links from)</span></FormLabel>
                     <FormControl>
                       <Textarea
-                        className="font-mono text-sm min-h-[100px] resize-none"
-                        placeholder={"@channel_one\n@channel_two\n-1001234567890"}
+                        className="font-mono text-sm min-h-[110px] resize-none"
+                        placeholder={"@channel_username\nhttps://t.me/+AbCdEfGhIjKlMnOp\n-1001234567890"}
                         {...field}
                       />
                     </FormControl>
                     <FormDescription className="text-xs">
-                      One channel per line. Use <code className="bg-muted px-1 rounded">@username</code> or a numeric channel ID.
+                      One per line. Accepted formats:
+                      <span className="block mt-1 space-y-0.5">
+                        <span className="block"><code className="bg-muted px-1 rounded">@username</code> — public channel username</span>
+                        <span className="block"><code className="bg-muted px-1 rounded">https://t.me/+AbCd...</code> — private invite link</span>
+                        <span className="block"><code className="bg-muted px-1 rounded">-1001234567890</code> — numeric channel ID</span>
+                      </span>
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
