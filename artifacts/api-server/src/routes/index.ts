@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import configRouter from "./config";
-import botRouter from "./bot";
+import botRouter from "../pipeline";
 import logsRouter from "./logs";
 import statsRouter from "./stats";
 
