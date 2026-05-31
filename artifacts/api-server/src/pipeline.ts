@@ -114,7 +114,8 @@ async function createAdmavenLink(cleanUrl: string, apiKey: string): Promise<{ ad
         (typeof data["url"] === "string" ? data["url"] : null) ??
         (typeof data["shortenedUrl"] === "string" ? data["shortenedUrl"] : null) ??
         (typeof data["short_url"] === "string" ? data["short_url"] : null) ??
-        (typeof data["link"] === "string" ? data["link"] : null);
+        (typeof data["link"] === "string" ? data["link"] : null) ??
+        (Array.isArray(data["message"]) && typeof data["message"][0]?.["full_short"] === "string" ? data["message"][0]["full_short"] : null);
 
       if (!url) {
         return { admavenUrl: null, error: `AdMaven unexpected format: ${JSON.stringify(data)}` };
