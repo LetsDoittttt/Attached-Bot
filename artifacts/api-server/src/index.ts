@@ -1,5 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { startUserbot } from "./userbot";
+
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +24,5 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  startUserbot().catch(e => logger.error({ err: e }, "Userbot failed"));
 });
