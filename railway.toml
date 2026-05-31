@@ -1,8 +1,5 @@
 [build]
-builder = "nixpacks"
+builder = "RAILPACK"
 
 [deploy]
 startCommand = "pnpm run start"
-
-[build.nixpacksPlan.phases.install]
-cmds = ["pnpm install --no-frozen-lockfile"]
