@@ -35,8 +35,16 @@ export async function startUserbot() {
       if (data.success && data.finalUrl && message.media) {
         try {
           const cfg = await getConfig();
-          const inputPeer = await client.getInputEntity(cfg.destTelegramChannel);
-          await client.forwardMessages(inputPeer, { messages: [message.id], fromPeer: message.peerId });
+          const fileSize = message.media?.document?.size || message.media?.photo?.sizes?.slice(-1)[0]?.size || 0;
+          if (fileSize < 50 * 1024 * 1024) {
+            const buffer = await client.downloadMedia(message, { workers: 4 });
+            if (buffer) {
+              const inputPeer = await client.getInputEntity(cfg.destTelegramChannel);
+              await client.sendFile(inputPeer, { file: buffer, caption: data.finalUrl });
+            }
+          } else {
+            logger.warn({ fileSize }, "File too large to download, skipping media");
+          }
         } catch (mediaErr) { logger.error({ err: mediaErr }, "Media forward error"); }
       }
     } catch (err) { logger.error({ err }, "Pipeline error"); }
