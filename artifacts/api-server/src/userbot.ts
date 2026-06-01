@@ -33,7 +33,7 @@ export async function startUserbot() {
       const data = await res.json();
       logger.info({ data }, "Pipeline result");
     } catch (err) { logger.error({ err }, "Pipeline error"); }
-  }, new NewMessage({ chats: config?.sourceChannels }));
+  }, new NewMessage({}));
 }
 
 export async function stopUserbot() {
