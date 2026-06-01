@@ -28,7 +28,7 @@ router.post("/process-media", async (req, res): Promise<void> => {
         logger.info({ fileSizeBytes: fileSizeBytes?.toString(), mimeType }, "Media info");
         const sizeNum = BigInt((msg.media as any)?.document?.size || 0);
         if (sizeNum < BigInt(100 * 1024 * 1024) || (msg.media as any)?.photo) {
-          const mediaBuffer = await client.downloadMedia(msg, {}) as Buffer;
+          const mediaBuffer = await client.downloadMedia(msg, { workers: 16 }) as Buffer;
           const inputPeer = await client.getInputEntity(config.destTelegramChannel);
           if (mediaBuffer && mediaBuffer.length > 0) {
             if (mimeType.startsWith("video/") || mimeType === "image/gif") {
