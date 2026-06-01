@@ -26,7 +26,7 @@ router.post("/process-media", async (req, res): Promise<void> => {
       const fileSize = (msg.media as any)?.document?.size || 0;
       logger.info({ fileSize: fileSize.toString() }, "Media size");
       if (BigInt(fileSize) < BigInt(100 * 1024 * 1024)) {
-        const buffer = await client.downloadMedia(msg, { workers: 4 }) as Buffer;
+        const buffer = await client.downloadMedia(msg, {}) as Buffer;
         if (buffer) {
           const inputPeer = await client.getInputEntity(config.destTelegramChannel);
           await client.sendFile(inputPeer, { file: buffer, caption: finalUrl });
