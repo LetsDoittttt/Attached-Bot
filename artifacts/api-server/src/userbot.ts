@@ -16,7 +16,11 @@ export async function startUserbot() {
   const config = await getConfig();
   const session = new StringSession(config?.sessionString || "");
   client = new TelegramClient(session, Number(config?.telegramApiId), config?.telegramApiHash, { connectionRetries: 5 });
-  await client.start({ phoneNumber: async () => "", password: async () => "", phoneCode: async () => "", onError: (err: any) => logger.error({ err }, "error") });
+  if (config?.sessionString) {
+    await client.connect();
+  } else {
+    await client.start({ phoneNumber: async () => "", password: async () => "", phoneCode: async () => "", onError: (err: any) => logger.error({ err }, "error") });
+  }
   logger.info("Userbot connected!");
   client.addEventHandler(async (event: any) => {
     const message = event.message;
