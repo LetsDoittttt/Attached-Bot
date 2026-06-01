@@ -25,7 +25,7 @@ router.post("/process-media", async (req, res): Promise<void> => {
       if (msg?.media) {
         const fileSizeBytes = (msg.media as any)?.document?.size || (msg.media as any)?.photo ? 1 : 0;
         const mimeType: string = (msg.media as any)?.document?.mimeType || "image/jpeg";
-        logger.info({ fileSizeBytes: fileSizeBytes?.toString(), mimeType }, "Media info");
+        logger.info({ fileSizeBytes: fileSizeBytes?.toString(), mimeType, mediaClass: (msg.media as any)?.className, docSize: (msg.media as any)?.document?.size?.toString() }, "Media info");
         const sizeNum = BigInt((msg.media as any)?.document?.size || 0);
         if (sizeNum < BigInt(100 * 1024 * 1024) || (msg.media as any)?.photo) {
           const mediaBuffer = await new Promise<Buffer>((resolve, reject) => {
