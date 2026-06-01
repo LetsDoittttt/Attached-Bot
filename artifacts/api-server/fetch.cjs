@@ -11,9 +11,12 @@ const { StringSession } = require('telegram/sessions');
   try {
     await client.invoke(new (require('telegram/tl').Api.messages.ImportChatInvite)({ hash: 'b_RhDucMusIyZTE0' }));
   } catch(e) { console.log('Already joined or error:', e.message); }
-  const messages = await client.getMessages(-1003924753309, { limit: 10 });
+  const messages = await client.getMessages(-1003924753309, { limit: 50 });
   for (const msg of messages) {
-    if (msg.text == null || msg.text === '') continue;
+    console.log('MSG:', msg.id, 'text:', JSON.stringify(msg.text?.slice(0,50)), 'fwd:', !!msg.fwdFrom, 'media:', msg.media?.className);
+    const text = msg.text || msg.message || '';
+    if (text === '') continue;
+    msg.text = text;
     const match = msg.text.match(/https?:\/\/[^\s]+/);
     if (match == null) continue;
     console.log('Found link:', match[0]);

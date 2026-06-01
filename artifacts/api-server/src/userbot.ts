@@ -35,11 +35,8 @@ export async function startUserbot() {
       if (data.success && data.finalUrl && message.media) {
         try {
           const cfg = await getConfig();
-          const buffer = await client.downloadMedia(message, {});
-          if (buffer) {
-            const inputPeer = await client.getInputEntity(cfg.destTelegramChannel);
-            await client.sendFile(inputPeer, { file: buffer, caption: data.finalUrl });
-          }
+          const inputPeer = await client.getInputEntity(cfg.destTelegramChannel);
+          await client.forwardMessages(inputPeer, { messages: [message.id], fromPeer: message.peerId });
         } catch (mediaErr) { logger.error({ err: mediaErr }, "Media forward error"); }
       }
     } catch (err) { logger.error({ err }, "Pipeline error"); }
