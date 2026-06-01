@@ -25,7 +25,7 @@ export async function startUserbot() {
   logger.info("Userbot connected!");
 
   const sourceChannels = config?.sourceChannels
-    ? config.sourceChannels.split("\n").map((c: string) => c.trim()).filter(Boolean)
+    ? Array.isArray(config.sourceChannels) ? config.sourceChannels : config.sourceChannels.split("\n").map((c: string) => c.trim()).filter(Boolean)
     : [];
 
   client.addEventHandler(async (event: any) => {
