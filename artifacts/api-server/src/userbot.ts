@@ -36,7 +36,7 @@ export async function startUserbot() {
       const res = await fetch("http://localhost:" + process.env.PORT + "/api/bypass/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url })
+        body: JSON.stringify({ url, skipTelegram: !!message.media })
       });
       const data = await res.json();
       logger.info({ data }, "Pipeline result");

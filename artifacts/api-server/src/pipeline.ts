@@ -260,7 +260,7 @@ router.post("/bypass/test", async (req, res): Promise<void> => {
     let postedToTelegram = false;
     let telegramError: string | null = null;
 
-    if (hasBotToken && hasDestChannel) {
+    if (hasBotToken && hasDestChannel && !skipTelegram) {
       const template = config.postTemplate || "{bypassed}";
       const tgResult = await sendTelegramMessage(config.telegramBotToken, config.destTelegramChannel, template.replace("{bypassed}", finalUrl));
       postedToTelegram = tgResult.ok;
