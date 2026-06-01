@@ -27,11 +27,19 @@ router.post("/process-media", async (req, res): Promise<void> => {
       const fileSize = (msg.media as any)?.document?.size || 0;
       logger.info({ fileSize: fileSize.toString() }, "Media size");
       if (BigInt(fileSize) < BigInt(100 * 1024 * 1024)) {
-        const buffer = await client.downloadMedia(msg, {}) as Buffer;
-          if (buffer) {
-            const inputPeer = await client.getInputEntity(config.destTelegramChannel);
-            await client.sendFile(inputPeer, { file: buffer, caption: finalUrl });
-            logger.info("Media sent successfully");
+        const thumb = await client.downloadMedia(msg, { thumb: -1 }) as Buffer;
+          const inputPeer = await client.getInputEntity(config.destTelegramChannel);
+          if (thumb) {
+            await client.sendFile(inputPeer, { file: thumb, caption: finalUrl });
+            logger.info("Thumbnail sent successfully");
+          } else {
+            const botToken = config.telegramBotToken;
+            await fetch("https://api.telegram.org/bot" + botToken + "/sendMessage", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: config.destTelegramChannel, text: finalUrl })
+            });
+            logger.info("Sent link only - no thumbnail");
           }
       } else {
         logger.warn({ fileSize: fileSize.toString() }, "File too large");
