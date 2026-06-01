@@ -43,7 +43,7 @@ export async function startUserbot() {
         } catch (mediaErr) { logger.error({ err: mediaErr }, "Media forward error"); }
       }
     } catch (err) { logger.error({ err }, "Pipeline error"); }
-  }, new NewMessage({}));
+  }, new NewMessage({ chats: [-1003924753309] }));
 }
 
 export async function stopUserbot() {
