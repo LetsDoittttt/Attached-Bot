@@ -32,6 +32,16 @@ export async function startUserbot() {
       const res = await fetch("http://localhost:" + process.env.PORT + "/api/bypass/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) });
       const data = await res.json();
       logger.info({ data }, "Pipeline result");
+      if (data.success && data.finalUrl && message.media) {
+        try {
+          const cfg = await getConfig();
+          const buffer = await client.downloadMedia(message, {});
+          if (buffer) {
+            const inputPeer = await client.getInputEntity(cfg.destTelegramChannel);
+            await client.sendFile(inputPeer, { file: buffer, caption: data.finalUrl });
+          }
+        } catch (mediaErr) { logger.error({ err: mediaErr }, "Media forward error"); }
+      }
     } catch (err) { logger.error({ err }, "Pipeline error"); }
   }, new NewMessage({}));
 }
