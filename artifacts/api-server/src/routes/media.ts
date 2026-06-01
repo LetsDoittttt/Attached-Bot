@@ -36,7 +36,9 @@ router.post("/process-media", async (req, res): Promise<void> => {
                 file: mediaBuffer,
                 caption: finalUrl,
                 forceDocument: false,
-                attributes: [new Api.DocumentAttributeVideo({ duration: 0, w: 0, h: 0, supportsStreaming: true })]
+                fileName: "video.mp4",
+                workers: 1,
+                attributes: [new Api.DocumentAttributeVideo({ duration: 0, w: 1280, h: 720, supportsStreaming: true })]
               });
               logger.info("Sent as video");
             } else if (mimeType.startsWith("image/") || (msg.media as any)?.photo) {
