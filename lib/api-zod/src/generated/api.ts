@@ -42,6 +42,7 @@ export const UpdateConfigBody = zod.object({
   sourceChannels: zod.array(zod.string()).optional(),
   destTelegramChannel: zod.string().optional(),
   discordWebhookUrl: zod.string().optional(),
+  sessionString: zod.string().optional(),
   bypassApiUrl: zod.string().optional(),
   bypassApiKey: zod.string().optional(),
   admavenApiKey: zod.string().optional(),
