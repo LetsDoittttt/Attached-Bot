@@ -198,6 +198,7 @@ router.post("/bypass/test", async (req, res): Promise<void> => {
   const parsed = TestBypassBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const { url } = parsed.data;
+  const skipTelegram = (req.body as any).skipTelegram === true;
 
   try {
     const configs = await db.select().from(botConfigTable).limit(1);
