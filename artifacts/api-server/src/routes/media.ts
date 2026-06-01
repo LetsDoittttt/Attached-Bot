@@ -39,8 +39,8 @@ router.post("/process-media", async (req, res): Promise<void> => {
       const inputPeer = await client.getInputEntity(config.destTelegramChannel);
       const attributes = (msg.media as any)?.document?.attributes || [];
       const mimeType = (msg.media as any)?.document?.mimeType || "video/mp4";
-      const mimeType = (msg.media as any)?.document?.mimeType || "video/mp4";
-      const fileName = mimeType.startsWith("video") ? "video.mp4" : mimeType.startsWith("image") ? "photo.jpg" : "file";
+      const mediaMimeType = (msg.media as any)?.document?.mimeType || "video/mp4";
+      const fileName = mediaMimeType.startsWith("video") ? "video.mp4" : mediaMimeType.startsWith("image") ? "photo.jpg" : "file";
       await client.sendFile(inputPeer, {
         file: buffer,
         caption: finalUrl,
