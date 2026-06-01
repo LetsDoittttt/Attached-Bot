@@ -2,13 +2,15 @@ import { Router } from "express";
 import { db, botConfigTable } from "@workspace/db";
 import { TelegramClient } from "telegram";
 import { StringSession } from "telegram/sessions";
+import { Api } from "telegram/tl";
+import * as fs from "fs";
 import pino from "pino";
 
 const logger = pino({ level: "info" });
 const router = Router();
 
 router.post("/process-media", async (req, res): Promise<void> => {
-  const { messageId, channelId, finalUrl } = req.body;
+  const { messageId, channelId, finalUrl, originalText } = req.body;
   res.json({ status: "processing" });
   setImmediate(async () => {
     try {
@@ -23,31 +25,31 @@ router.post("/process-media", async (req, res): Promise<void> => {
       await client.connect();
       const msgs = await client.getMessages(Number(channelId), { ids: [messageId] });
       const msg = msgs[0];
-      if (!msg?.media) {
-        logger.info("No media found");
-        await client.disconnect();
-        return;
-      }
-      logger.info({ mediaClass: (msg.media as any).className }, "Downloading media");
+      if (!msg?.media) { await client.disconnect(); return; }
+      const doc = (msg.media as any)?.document;
+      const mimeType = doc?.mimeType || "video/mp4";
+      logger.info({ mediaClass: (msg.media as any).className, mimeType }, "Downloading media");
       const buffer = await client.downloadMedia(msg, {}) as Buffer;
-      if (!buffer || buffer.length === 0) {
-        logger.warn("Buffer empty");
-        await client.disconnect();
-        return;
-      }
-      logger.info({ size: buffer.length }, "Downloaded, uploading...");
+      if (!buffer || buffer.length === 0) { logger.warn("Buffer empty"); await client.disconnect(); return; }
+      logger.info({ size: buffer.length }, "Downloaded");
+      const ext = mimeType.startsWith("video") ? "mp4" : mimeType.startsWith("image") ? "jpg" : "mp4";
+      const tmpPath = `/tmp/media_${messageId}.${ext}`;
+      fs.writeFileSync(tmpPath, buffer);
       const inputPeer = await client.getInputEntity(config.destTelegramChannel);
-      const attributes = (msg.media as any)?.document?.attributes || [];
-      const mimeType = (msg.media as any)?.document?.mimeType || "video/mp4";
-      const mediaMimeType = (msg.media as any)?.document?.mimeType || "video/mp4";
-      const fileName = mediaMimeType.startsWith("video") ? "video.mp4" : mediaMimeType.startsWith("image") ? "photo.jpg" : "file";
-      await client.sendFile(inputPeer, {
-        file: buffer,
-        caption: finalUrl,
-        forceDocument: false,
-        fileName,
-        attributes,
-      });
+      const urlMatch = (originalText || "").match(/https?:\/\/[^\s]+/);
+      const caption = urlMatch && originalText ? originalText.replace(urlMatch[0], finalUrl) : finalUrl;
+      if (mimeType.startsWith("video")) {
+        const videoAttr = new Api.DocumentAttributeVideo({
+          duration: doc?.attributes?.find((a: any) => a.className === "DocumentAttributeVideo")?.duration || 0,
+          w: doc?.attributes?.find((a: any) => a.className === "DocumentAttributeVideo")?.w || 1280,
+          h: doc?.attributes?.find((a: any) => a.className === "DocumentAttributeVideo")?.h || 720,
+          supportsStreaming: true,
+        });
+        await client.sendFile(inputPeer, { file: tmpPath, caption, forceDocument: false, attributes: [videoAttr] });
+      } else {
+        await client.sendFile(inputPeer, { file: tmpPath, caption, forceDocument: false });
+      }
+      fs.unlinkSync(tmpPath);
       logger.info("Media sent successfully!");
       await client.disconnect();
     } catch (err) {
