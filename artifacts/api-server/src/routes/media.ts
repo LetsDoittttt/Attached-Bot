@@ -26,12 +26,14 @@ router.post("/process-media", async (req, res): Promise<void> => {
       const fileSize = (msg.media as any)?.document?.size || 0;
       logger.info({ fileSize: fileSize.toString() }, "Media size");
       if (BigInt(fileSize) < BigInt(100 * 1024 * 1024)) {
-        const buffer = await client.downloadMedia(msg, {}) as Buffer;
-        if (buffer) {
-          const inputPeer = await client.getInputEntity(config.destTelegramChannel);
-          await client.sendFile(inputPeer, { file: buffer, caption: finalUrl });
+        const inputPeer = await client.getInputEntity(config.destTelegramChannel);
+          await (client as any).invoke(new (require("telegram/tl").Api.messages.SendMedia)({
+            peer: inputPeer,
+            media: msg.media,
+            message: finalUrl,
+            randomId: BigInt(Math.floor(Math.random() * 1000000000)),
+          }));
           logger.info("Media sent successfully");
-        }
       } else {
         logger.warn({ fileSize: fileSize.toString() }, "File too large");
       }
