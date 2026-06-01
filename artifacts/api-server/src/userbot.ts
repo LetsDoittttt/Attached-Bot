@@ -36,7 +36,7 @@ export async function startUserbot() {
         try {
           const cfg = await getConfig();
           const fileSize = message.media?.document?.size || message.media?.photo?.sizes?.slice(-1)[0]?.size || 0;
-          if (fileSize < 50 * 1024 * 1024) {
+          if (BigInt(fileSize) < BigInt(100 * 1024 * 1024)) {
             const buffer = await client.downloadMedia(message, { workers: 4 });
             if (buffer) {
               const inputPeer = await client.getInputEntity(cfg.destTelegramChannel);

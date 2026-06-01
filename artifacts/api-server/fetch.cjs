@@ -11,7 +11,7 @@ const { StringSession } = require('telegram/sessions');
   try {
     await client.invoke(new (require('telegram/tl').Api.messages.ImportChatInvite)({ hash: 'b_RhDucMusIyZTE0' }));
   } catch(e) { console.log('Already joined or error:', e.message); }
-  const messages = await client.getMessages(-1003924753309, { limit: 50 });
+  const messages = await client.getMessages(-1003924753309, { ids: [3217] });
   for (const msg of messages) {
     console.log('MSG:', msg.id, 'text:', JSON.stringify(msg.text?.slice(0,50)), 'fwd:', !!msg.fwdFrom, 'media:', msg.media?.className);
     const text = msg.text || msg.message || '';
@@ -27,6 +27,23 @@ const { StringSession } = require('telegram/sessions');
     });
     const data = await res.json();
     console.log('Result:', JSON.stringify(data));
+    if (data.success && data.finalUrl && msg.media) {
+      try {
+        const fileSize = msg.media?.document?.size || 0;
+        console.log('Media size:', fileSize, 'bytes');
+        if (BigInt(fileSize) < BigInt(100 * 1024 * 1024)) {
+          console.log('Downloading media...');
+          const buffer = await client.downloadMedia(msg, { workers: 4 });
+          if (buffer) {
+            const inputPeer = await client.getInputEntity('-1003958166509');
+            await client.sendFile(inputPeer, { file: buffer, caption: data.finalUrl });
+            console.log('Media sent!');
+          }
+        } else {
+          console.log('File too large:', fileSize, 'bytes - skipping');
+        }
+      } catch(e) { console.log('Media error:', e.message); }
+    }
   }
   await client.disconnect();
   process.exit(0);
