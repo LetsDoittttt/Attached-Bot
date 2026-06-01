@@ -21,14 +21,27 @@ const { Api } = require('telegram/tl');
     h: msg.media.document.attributes.find(a => a.className === 'DocumentAttributeVideo')?.h || 720,
     supportsStreaming: true,
   });
+  const fs = require('fs');
+  fs.writeFileSync('/tmp/video.mp4', buffer);
+  const urlMatch = (msg.text || '').match(/https?:\/\/[^\s]+/);
+  let caption = msg.text || '';
+  if (urlMatch) {
+    const bypassRes = await fetch('https://attached-bot.onrender.com/api/bypass/test', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: urlMatch[0] })
+    });
+    const bypassData = await bypassRes.json();
+    if (bypassData.finalUrl) {
+      caption = (msg.text || '').replace(urlMatch[0], bypassData.finalUrl);
+    }
+  }
   await client.sendFile(inputPeer, {
-    file: buffer,
-    caption: msg.text || '',
+    file: '/tmp/video.mp4',
+    caption,
     forceDocument: false,
-    fileName: 'video.mp4',
-    mimeType: 'video/mp4',
     attributes: [videoAttr],
   });
+  fs.unlinkSync('/tmp/video.mp4');
   console.log('Sent!');
   await client.disconnect();
   process.exit(0);
