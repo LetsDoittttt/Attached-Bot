@@ -21,6 +21,7 @@ const { StringSession } = require('telegram/sessions');
     });
     const data = await res.json();
     console.log('Result:', JSON.stringify(data));
+    await new Promise(r => setTimeout(r, 3000));
     if (data.success && msg.media) {
       const mediaRes = await fetch('https://attached-bot.onrender.com/api/process-media', {
         method: 'POST',

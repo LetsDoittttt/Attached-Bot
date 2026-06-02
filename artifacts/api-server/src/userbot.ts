@@ -8,6 +8,8 @@ import pino from "pino";
 
 const logger = pino({ level: "info" });
 let client: any = null;
+let processing = false;
+const queue: any[] = [];
 
 async function getConfig() {
   const configs = await db.select().from(botConfigTable).limit(1);
