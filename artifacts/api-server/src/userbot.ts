@@ -126,7 +126,7 @@ export async function startUserbot() {
     await client.start({ phoneNumber: async () => "", password: async () => "", phoneCode: async () => "", onError: (err: any) => logger.error({ err }, "error") });
   }
   logger.info("Userbot connected!");
-  await backfill();
+  // backfill disabled — new posts only
   client.addEventHandler(async (event: any) => {
     const message = event.message;
     if (message?.text == null) return;
