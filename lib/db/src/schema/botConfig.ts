@@ -15,7 +15,6 @@ export const botConfigTable = pgTable("bot_config", {
   telegramBotToken: text("telegram_bot_token").notNull().default(""),
   postTemplate: text("post_template").notNull().default("🔗 New Link Posted!\n\n✅ Bypassed Link: {bypassed}"),
   sessionString: text("session_string").notNull().default(""),
-  lastSeenMessageId: text("last_seen_message_id").notNull().default("0"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 
