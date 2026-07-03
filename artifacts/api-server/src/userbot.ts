@@ -47,7 +47,7 @@ export async function startUserbot() {
             if (fileSize < BigInt(100 * 1024 * 1024)) {
               const buffer = await client.downloadMedia(message, {});
               if (buffer && buffer.length > 0) {
-                const tmpPath = ;
+                const tmpPath = `/tmp/media_${message.id}.mp4`;
                 fs.writeFileSync(tmpPath, buffer);
                 const videoAttr = new Api.DocumentAttributeVideo({
                   duration: doc?.attributes?.find((a: any) => a.className === "DocumentAttributeVideo")?.duration || 0,
