@@ -38,6 +38,7 @@ export async function startUserbot() {
       const res = await fetch("http://localhost:" + process.env.PORT + "/api/bypass/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, skipTelegram: !!message.media }),
       });
       const data = await res.json();
       logger.info({ data }, "Pipeline result");
@@ -87,6 +88,7 @@ export async function startUserbot() {
       }
     } catch (err) { logger.error({ err }, "Pipeline error"); }
   }, new NewMessage({ chats: [-1003924753309] }));
+  logger.info("Userbot connected and listening");
 }
 
 export async function stopUserbot() {
