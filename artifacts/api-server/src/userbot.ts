@@ -19,7 +19,10 @@ export async function startUserbot() {
   const session = new StringSession(config?.sessionString || "");
   client = new TelegramClient(session, Number(config?.telegramApiId), config?.telegramApiHash, { connectionRetries: 5 });
   if (config?.sessionString) {
-    await client.connect();
+    await Promise.race([
+      client.connect(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Telegram connect timeout after 15s")), 15000))
+    ]);
   } else {
     await client.start({ phoneNumber: async () => "", password: async () => "", phoneCode: async () => "", onError: (err: any) => logger.error({ err }, "error") });
   }
