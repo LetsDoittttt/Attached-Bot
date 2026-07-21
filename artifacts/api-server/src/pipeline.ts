@@ -144,7 +144,7 @@ async function sendTelegramMessage(botToken: string, chatId: string, text: strin
     if (!res.ok || data["ok"] !== true) {
       const description = typeof data["description"] === "string" ? data["description"] : `HTTP ${res.status}`;
       if (description.toLowerCase().includes("chat not found")) {
-        return { ok: false, error: `Chat not found — use @username or numeric ID (e.g. -1001234567890) for: ${chatId}` };
+        return { ok: false, error: `Chat not found — raw response: ${JSON.stringify(data)} for: ${chatId}` };
       }
       return { ok: false, error: description };
     }
