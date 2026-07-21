@@ -137,7 +137,7 @@ async function sendTelegramMessage(botToken: string, chatId: string, text: strin
     const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML" }),
+      body: JSON.stringify({ chat_id: chatId.startsWith("-") ? Number(chatId) : chatId, text, parse_mode: "HTML" }),
       signal: AbortSignal.timeout(10000),
     });
     const data = await res.json() as Record<string, unknown>;
