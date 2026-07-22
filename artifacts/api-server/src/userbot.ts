@@ -8,6 +8,7 @@ import pino from "pino";
 
 const logger = pino({ level: "info" });
 let client: any = null;
+const startTime = Math.floor(Date.now() / 1000);
 
 async function getConfig() {
   const configs = await db.select().from(botConfigTable).limit(1);
@@ -30,6 +31,7 @@ export async function startUserbot() {
   client.addEventHandler(async (event: any) => {
     const message = event.message;
     if (message?.text == null) return;
+    if (message.date && message.date < startTime) return;
     const urlMatch = message.text.match(/https?:\/\/[^\s]+/);
     if (urlMatch == null) return;
     const url = urlMatch[0];
