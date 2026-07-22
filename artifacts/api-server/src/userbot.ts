@@ -102,6 +102,20 @@ export async function startUserbot() {
       logger.info({ d }, "Backfill result");
     } catch(e) { logger.error({ err: e }, "Backfill error"); }
   }
+  // one-time backfill last 5 posts
+  const cfg2 = await getConfig();
+  const msgs = await client.getMessages(-1003924753309, { limit: 5 });
+  for (const msg of [...msgs].reverse()) {
+    const u = msg.text.match(/https?:\/\/[^\s]+/);
+    try {
+      const r = await fetch("http://localhost:" + process.env.PORT + "/api/bypass/test", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: u[0], skipTelegram: false }),
+      });
+      const d = await r.json();
+      logger.info({ d }, "Backfill result");
+    } catch(e) { logger.error({ err: e }, "Backfill error"); }
+  }
   logger.info("Userbot connected and listening");
 }
 
