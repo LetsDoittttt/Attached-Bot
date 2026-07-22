@@ -88,7 +88,7 @@ export async function startUserbot() {
       }
     } catch (err) { logger.error({ err }, "Pipeline error"); }
   }, new NewMessage({ chats: [-1003924753309] }));
-  // one-time backfill last 5 posts
+  // backfill disabled
   const msgs = await client.getMessages(-1003924753309, { limit: 5 });
   for (const msg of [...msgs].reverse()) {
     const u = msg.text.match(/https?:\/\/[^\s]+/);
