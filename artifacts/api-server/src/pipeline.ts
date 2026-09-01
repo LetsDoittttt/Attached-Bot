@@ -214,6 +214,7 @@ router.post("/bypass/test", async (req, res): Promise<void> => {
     let bypassError: string | null = null;
 
     if (hasExternalBypassApi) {
+      await new Promise(r => setTimeout(r, 2000));
       const response = await fetch(`${config.bypassApiUrl}?${new URLSearchParams({ url })}`, {
         headers: config.bypassApiKey ? { "x-api-key": config.bypassApiKey } : {},
         signal: AbortSignal.timeout(15000),
