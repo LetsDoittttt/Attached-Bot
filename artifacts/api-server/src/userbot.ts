@@ -10,6 +10,24 @@ const logger = pino({ level: "info" });
 let client: any = null;
 const startTime = Date.now() + 10000;
 
+// ── QUEUE ──────────────────────────────────────────────────────────────────────
+const queue: Array<() => Promise<void>> = [];
+let queueRunning = false;
+
+function enqueue(fn: () => Promise<void>) {
+  queue.push(fn);
+  if (!queueRunning) runQueue();
+}
+
+async function runQueue() {
+  if (queue.length === 0) { queueRunning = false; return; }
+  queueRunning = true;
+  const fn = queue.shift()!;
+  try { await fn(); } catch (e) { logger.error({ err: e }, "Queue error"); }
+  await new Promise(r => setTimeout(r, 3000));
+  runQueue();
+}
+
 async function getConfig() {
   const configs = await db.select().from(botConfigTable).limit(1);
   return configs[0];
@@ -35,60 +53,56 @@ export async function startUserbot() {
     const urlMatch = message.text.match(/https?:\/\/[^\s]+/);
     if (urlMatch == null) return;
     const url = urlMatch[0];
-    try {
-      const cfg = await getConfig();
-      const res = await fetch("http://localhost:" + process.env.PORT + "/api/bypass/test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, skipTelegram: !!message.media }),
-      });
-      const data = await res.json();
-      logger.info({ data }, "Pipeline result");
-      if (data.success && data.finalUrl) {
-        const inputPeer = await client.getInputEntity(cfg.destTelegramChannel);
-        if (message.media) {
-          try {
-            const doc = message.media?.document;
-            const fileSize = BigInt(doc?.size || 0);
-            if (fileSize < BigInt(100 * 1024 * 1024)) {
-              const buffer = await client.downloadMedia(message, {});
-              if (buffer && buffer.length > 0) {
-                const tmpPath = `/tmp/media_${message.id}.mp4`;
-                fs.writeFileSync(tmpPath, buffer);
-                const videoAttr = new Api.DocumentAttributeVideo({
-                  duration: doc?.attributes?.find((a: any) => a.className === "DocumentAttributeVideo")?.duration || 0,
-                  w: doc?.attributes?.find((a: any) => a.className === "DocumentAttributeVideo")?.w || 1280,
-                  h: doc?.attributes?.find((a: any) => a.className === "DocumentAttributeVideo")?.h || 720,
-                  supportsStreaming: true,
+
+    enqueue(async () => {
+      try {
+        const cfg = await getConfig();
+        const res = await fetch("http://localhost:" + process.env.PORT + "/api/bypass/test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url, skipTelegram: !!message.media }),
+        });
+        const data = await res.json();
+        logger.info({ data }, "Pipeline result");
+        if (data.success && data.finalUrl) {
+          const inputPeer = await client.getInputEntity(cfg.destTelegramChannel);
+          if (message.media) {
+            try {
+              const doc = message.media?.document;
+              const fileSize = BigInt(doc?.size || 0);
+              if (fileSize < BigInt(100 * 1024 * 1024)) {
+                const buffer = await client.downloadMedia(message, {});
+                if (buffer && buffer.length > 0) {
+                  const tmpPath = `/tmp/media_${message.id}.mp4`;
+                  fs.writeFileSync(tmpPath, buffer);
+                  const videoAttr = new Api.DocumentAttributeVideo({
+                    duration: doc?.attributes?.find((a: any) => a.className === "DocumentAttributeVideo")?.duration || 0,
+                    w: doc?.attributes?.find((a: any) => a.className === "DocumentAttributeVideo")?.w || 1280,
+                    h: doc?.attributes?.find((a: any) => a.className === "DocumentAttributeVideo")?.h || 720,
+                    supportsStreaming: true,
+                  });
+                  const caption = message.text.replace(urlMatch[0], data.finalUrl);
+                  await client.sendFile(inputPeer, { file: tmpPath, caption, forceDocument: false, attributes: [videoAttr] });
+                  fs.unlinkSync(tmpPath);
+                }
+              } else {
+                logger.warn({ fileSize: fileSize.toString() }, "File too large, sending link only");
+                await fetch("https://api.telegram.org/bot" + cfg.telegramBotToken + "/sendMessage", {
+                  method: "POST", headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ chat_id: Number(cfg.destTelegramChannel), text: data.finalUrl })
                 });
-                const caption = message.text.replace(urlMatch[0], data.finalUrl);
-                await client.sendFile(inputPeer, {
-                  file: tmpPath,
-                  caption,
-                  forceDocument: false,
-                  attributes: [videoAttr],
-                });
-                fs.unlinkSync(tmpPath);
               }
-            } else {
-              logger.warn({ fileSize: fileSize.toString() }, "File too large, sending link only");
-              await fetch("https://api.telegram.org/bot" + cfg.telegramBotToken + "/sendMessage", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chat_id: cfg.destTelegramChannel, text: data.finalUrl })
-              });
-            }
-          } catch (mediaErr) { logger.error({ err: mediaErr }, "Media error"); }
-        } else {
-          await fetch("https://api.telegram.org/bot" + cfg.telegramBotToken + "/sendMessage", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: cfg.destTelegramChannel, text: data.finalUrl })
-          });
-          logger.info("Link sent");
+            } catch (mediaErr) { logger.error({ err: mediaErr }, "Media error"); }
+          } else {
+            await fetch("https://api.telegram.org/bot" + cfg.telegramBotToken + "/sendMessage", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: Number(cfg.destTelegramChannel), text: data.finalUrl })
+            });
+            logger.info("Link sent");
+          }
         }
-      }
-    } catch (err) { logger.error({ err }, "Pipeline error"); }
+      } catch (err) { logger.error({ err }, "Pipeline error"); }
+    });
   }, new NewMessage({ chats: [-1003924753309] }));
 
   logger.info("Userbot connected and listening");
