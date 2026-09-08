@@ -35,6 +35,15 @@ async function getConfig() {
 
 export async function startUserbot() {
   const config = await getConfig();
+
+  const sourceChatIds = (config?.sourceChannels ?? [])
+    .map((id: string) => Number(id))
+    .filter((id: number) => Number.isFinite(id));
+
+  if (sourceChatIds.length === 0) {
+    logger.warn("No sourceChannels configured — userbot will not listen to any channels");
+  }
+
   const session = new StringSession(config?.sessionString || "");
   client = new TelegramClient(session, Number(config?.telegramApiId), config?.telegramApiHash, { connectionRetries: 5 });
   if (config?.sessionString) {
@@ -103,9 +112,9 @@ export async function startUserbot() {
         }
       } catch (err) { logger.error({ err }, "Pipeline error"); }
     });
-  }, new NewMessage({ chats: [-1003924753309] }));
+  }, new NewMessage({ chats: sourceChatIds }));
 
-  logger.info("Userbot connected and listening");
+  logger.info({ sourceChannels: sourceChatIds }, "Userbot connected and listening");
 }
 
 export async function stopUserbot() {
