@@ -215,23 +215,46 @@ router.post("/bypass/test", async (req, res): Promise<void> => {
 
     if (hasExternalBypassApi) {
       await new Promise(r => setTimeout(r, 2000));
-      const response = await fetch(`${config.bypassApiUrl}?${new URLSearchParams({ url })}`, {
-        headers: config.bypassApiKey ? { "x-api-key": config.bypassApiKey } : {},
-        signal: AbortSignal.timeout(15000),
-      });
-      if (!response.ok) {
-        const errMsg = `Bypass API returned ${response.status}`;
+      let externalSucceeded = false;
+      let externalErrMsg: string | null = null;
+
+      try {
+        const response = await fetch(`${config.bypassApiUrl}?${new URLSearchParams({ url })}`, {
+          headers: config.bypassApiKey ? { "x-api-key": config.bypassApiKey } : {},
+          signal: AbortSignal.timeout(15000),
+        });
+        if (!response.ok) {
+          externalErrMsg = `Bypass API returned ${response.status}`;
+        } else {
+          const data = await response.json() as Record<string, unknown>;
+          const extracted = (data["url"] ?? data["bypassed"] ?? data["result"]) as string | null ?? null;
+          if (!extracted) {
+            externalErrMsg = "Could not parse bypass API response";
+          } else {
+            cleanUrl = extracted; bypassed = true; externalSucceeded = true;
+          }
+        }
+      } catch (err) {
+        externalErrMsg = err instanceof Error ? err.message : "External bypass API request failed";
+      }
+
+      // Fallback: external bypass API failed/timed out — try the built-in bypass chain
+      // (bypass.vip, then direct Linkvertise scrape) before giving up entirely.
+      if (!externalSucceeded && isLinkvertise(url)) {
+        req.log.warn({ externalErrMsg }, "External bypass API failed — falling back to built-in bypass");
+        const fallbackResult = await runBypass(url);
+        if (fallbackResult) {
+          cleanUrl = fallbackResult; bypassed = true; externalSucceeded = true;
+          bypassError = `External bypass API failed (${externalErrMsg}), recovered via built-in fallback`;
+        }
+      }
+
+      if (!externalSucceeded) {
+        const errMsg = externalErrMsg ?? "Bypass failed";
         await db.insert(activityLogTable).values({ originalUrl: url, bypassedUrl: null, sourceChannel: "manual-test", status: "failed", errorMessage: errMsg, postedToTelegram: false, postedToDiscord: false });
         res.json({ originalUrl: url, cleanUrl: null, finalUrl: null, bypassed: false, bypassError: errMsg, admavenWrapped: false, admavenError: null, postedToTelegram: false, telegramError: null, success: false, error: errMsg });
         return;
       }
-      const data = await response.json() as Record<string, unknown>;
-      const extracted = (data["url"] ?? data["bypassed"] ?? data["result"]) as string | null ?? null;
-      if (!extracted) {
-        res.json({ originalUrl: url, cleanUrl: null, finalUrl: null, bypassed: false, bypassError: "Could not parse bypass API response", admavenWrapped: false, admavenError: null, postedToTelegram: false, telegramError: null, success: false, error: "Could not parse bypass API response" });
-        return;
-      }
-      cleanUrl = extracted; bypassed = true;
     } else if (isLinkvertise(url)) {
       const result = await runBypass(url);
       if (!result) {
