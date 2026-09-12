@@ -17,6 +17,13 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
+// Replit always sets REPL_ID in its containers; Render never does. This blocks
+// the Telegram userbot from ever starting inside Replit — even if the dev
+// server gets auto-started by a workflow, a wake-up ping, or the Run button —
+// so it can never run alongside Render's live instance on the same session
+// and cause duplicate message processing / double-posting again.
+const isReplit = Boolean(process.env["REPL_ID"]);
+
 app.listen(port, (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
@@ -24,5 +31,11 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  if (isReplit) {
+    logger.warn("Running inside Replit — userbot startup skipped to prevent duplicate Telegram sessions. Only Render should run the live bot.");
+    return;
+  }
+
   startUserbot().catch(e => logger.error({ err: e }, "Userbot failed"));
 });
