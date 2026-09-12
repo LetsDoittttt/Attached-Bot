@@ -33,6 +33,11 @@ export async function startUserbot() {
     await client.start({ phoneNumber: async () => "", password: async () => "", phoneCode: async () => "", onError: (err: any) => logger.error({ err }, "error") });
   }
 
+  // Force-populate the entity/access_hash cache for all channels this account is in.
+  // Without this, GramJS's NewMessage `chats` filter can silently fail to match
+  // channels the client hasn't resolved yet this session (even if the ID is correct).
+  await client.getDialogs({});
+
   client.addEventHandler(async (event: any) => {
     const message = event.message;
     if (message?.text == null) return;
@@ -45,7 +50,11 @@ export async function startUserbot() {
       const res = await fetch("http://localhost:" + process.env.PORT + "/api/bypass/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, skipTelegram: !!message.media }),
+        // Always skip the pipeline's own Telegram send — userbot.ts is the single
+        // place that delivers the final message (media or text), for BOTH cases.
+        // Passing !!message.media here caused every non-media link to post twice:
+        // once from pipeline.ts's Step 3, and again from the code below.
+        body: JSON.stringify({ url, skipTelegram: true }),
       });
       const data = await res.json();
       logger.info({ data }, "Pipeline result");
@@ -80,7 +89,7 @@ export async function startUserbot() {
               await fetch("https://api.telegram.org/bot" + cfg.telegramBotToken + "/sendMessage", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chat_id: cfg.destTelegramChannel, text: data.finalUrl })
+                body: JSON.stringify({ chat_id: Number(cfg.destTelegramChannel), text: data.finalUrl })
               });
             }
           } catch (mediaErr) { logger.error({ err: mediaErr }, "Media error"); }
@@ -88,7 +97,7 @@ export async function startUserbot() {
           await fetch("https://api.telegram.org/bot" + cfg.telegramBotToken + "/sendMessage", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: cfg.destTelegramChannel, text: data.finalUrl })
+            body: JSON.stringify({ chat_id: Number(cfg.destTelegramChannel), text: data.finalUrl })
           });
           logger.info("Link sent");
         }
